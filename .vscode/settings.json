@@ -1,0 +1,4 @@
+{
+    "java.compile.nullAnalysis.mode": "automatic",
+    "cmake.sourceDirectory": "C:/Users/woogy/Documents/GitHub/5-min-exp-tracker/flutter-app/windows/flutter"
+}
