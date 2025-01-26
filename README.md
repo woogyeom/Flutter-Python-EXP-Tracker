@@ -21,6 +21,7 @@
 
 ---
 
+[사용 동영상](https://youtu.be/AExURzDv2UE?si=pqfsEcTX5duZP2kD)
 
 ---
 
