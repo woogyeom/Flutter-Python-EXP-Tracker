@@ -1,12 +1,12 @@
 import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:window_manager/window_manager.dart';
-import 'package:http/http.dart' as http;
+
 import 'dart:async';
-import 'dart:io';
 import '../exp_data_loader.dart';
 import '../ocr/ocr_util.dart';
 import '../server_manager.dart';
+import 'package:window_manager/window_manager.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -40,39 +40,6 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
 
   bool isErrorShown = false;
 
-  // 서버 상태를 나타내는 변수
-  String serverStatus = "connected"; // "connected", "error"
-
-  // 서버 상태를 표시하는 원
-  Widget _buildServerStatusIndicator() {
-    Color indicatorColor;
-
-    // 상태에 따라 색상 설정
-    switch (serverStatus) {
-      case "connected":
-        indicatorColor = CupertinoColors.activeGreen; // 초록색
-        break;
-      case "error":
-        indicatorColor = CupertinoColors.systemRed; // 빨간색
-        break;
-      default:
-        indicatorColor = CupertinoColors.systemGrey; // 기본색
-    }
-
-    return Positioned(
-      left: 10,
-      top: 10,
-      child: Container(
-        width: 20,
-        height: 20,
-        decoration: BoxDecoration(
-          color: indicatorColor,
-          shape: BoxShape.circle,
-        ),
-      ),
-    );
-  }
-
   // 서버 시작
   void _startServer() {
     serverManager.startServer();
@@ -92,7 +59,6 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
   @override
   void initState() {
     super.initState();
-    // _startServer();
     expDataLoader.loadExpData();
     windowManager.addListener(this); // Add window manager listener
   }
@@ -105,10 +71,6 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
 
   // 경험치와 퍼센트를 가져오는 함수
   void fetchAndDisplayExpData() {
-    setState(() {
-      serverStatus = "connected"; // 서버 연결 상태 표시
-    });
-
     expFetcher.fetchAndDisplayExpData(
       onUpdate: (exp, percentage, level) {
         setState(() {
@@ -139,9 +101,6 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
         });
       },
       onError: (errorMessage) {
-        setState(() {
-          serverStatus = "error"; // 오류 상태
-        });
         print("Error occurred: $errorMessage");
       },
     );
@@ -213,83 +172,99 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
       backgroundColor: CupertinoColors.darkBackgroundGray,
       child: Stack(
         children: [
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center, // 가로로 중앙 정렬
-                  children: [
-                    SizedBox(
-                      width: 100,
-                      height: 50,
-                      child: CupertinoButton(
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        onPressed: () {
-                          if (!isRunning && _elapsedTime == Duration.zero) {
-                            initialExp = totalExp; // 시작 시 초기화 경험치
-                            _startTimer();
-                          } else if (isRunning) {
-                            _stopTimer();
-                          } else {
-                            _resetTimer();
-                          }
-                        },
-                        color: isRunning
-                            ? CupertinoColors.systemRed
-                            : _elapsedTime == Duration.zero
-                                ? CupertinoColors.systemGreen
-                                : CupertinoColors.systemBlue,
-                        borderRadius: BorderRadius.circular(16),
-                        child: Text(
-                          isRunning
-                              ? '중단'
+          DragToMoveArea( // 창을 이동할 수 있도록 추가
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center, // 가로로 중앙 정렬
+                    children: [
+                      SizedBox(
+                        width: 100,
+                        height: 50,
+                        child: CupertinoButton(
+                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          onPressed: () {
+                            if (!isRunning && _elapsedTime == Duration.zero) {
+                              initialExp = totalExp; // 시작 시 초기화 경험치
+                              _startTimer();
+                            } else if (isRunning) {
+                              _stopTimer();
+                            } else {
+                              _resetTimer();
+                            }
+                          },
+                          color: isRunning
+                              ? CupertinoColors.systemRed
                               : _elapsedTime == Duration.zero
-                                  ? '시작'
-                                  : '초기화',
-                          style: GoogleFonts.roboto(
-                            textStyle: const TextStyle(
-                              color: CupertinoColors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.w700,
+                                  ? CupertinoColors.systemGreen
+                                  : CupertinoColors.systemBlue,
+                          borderRadius: BorderRadius.circular(16),
+                          child: Text(
+                            isRunning
+                                ? '중단'
+                                : _elapsedTime == Duration.zero
+                                    ? '시작'
+                                    : '초기화',
+                            style: GoogleFonts.roboto(
+                              textStyle: const TextStyle(
+                                color: CupertinoColors.white,
+                                fontSize: 24,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Text(
-                      timerText,
-                      style: GoogleFonts.roboto(
-                        textStyle: const TextStyle(
-                          color: CupertinoColors.white,
-                          fontSize: 60,
-                          fontWeight: FontWeight.w400,
+                      const SizedBox(width: 16),
+                      Text(
+                        timerText,
+                        style: GoogleFonts.roboto(
+                          textStyle: const TextStyle(
+                            color: CupertinoColors.white,
+                            fontSize: 60,
+                            fontWeight: FontWeight.w400,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                Column(
-                  children: [
-                    Text(
-                      '+ $totalExp [${totalPercentage.toStringAsFixed(2)}%]', // 경험치와 퍼센트 차이
-                      style: GoogleFonts.roboto(
-                        textStyle: const TextStyle(
-                          color: CupertinoColors.systemYellow,
-                          fontWeight: FontWeight.w400,
-                          fontSize: 48,
+                    ],
+                  ),
+                  Column(
+                    children: [
+                      Text(
+                        '+ $totalExp [${totalPercentage.toStringAsFixed(2)}%]', // 경험치와 퍼센트 차이
+                        style: GoogleFonts.roboto(
+                          textStyle: const TextStyle(
+                            color: CupertinoColors.systemYellow,
+                            fontWeight: FontWeight.w400,
+                            fontSize: 48,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
-          // 서버 상태 인디케이터
-          _buildServerStatusIndicator(),
+          // 종료 버튼 추가 (우측 상단)
+          Positioned(
+            top: 8,
+            right: 8,
+            child: CupertinoButton(
+              padding: EdgeInsets.zero,
+              onPressed: () {
+                _shutdownServer();
+                windowManager.close(); // 창을 닫는 처리
+              },
+              child: Icon(
+                CupertinoIcons.clear_thick_circled,
+                color: CupertinoColors.systemRed,
+                size: 30,
+              ),
+            ),
+          ),
         ],
       ),
     );

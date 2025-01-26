@@ -11,7 +11,7 @@ void main() async {
     size: Size(400, 250),
     center: true,
     skipTaskbar: false,
-    titleBarStyle: TitleBarStyle.normal,
+    titleBarStyle: TitleBarStyle.hidden,
   );
 
   await windowManager.setResizable(false);
