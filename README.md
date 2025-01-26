@@ -20,8 +20,8 @@
    - **서버 프로세스**(`ocr_server.exe`)를 실행/종료하는 기능 제공
 
 ---
-
-[사용 동영상](https://youtu.be/AExURzDv2UE?si=pqfsEcTX5duZP2kD)
+유튜브 영상
+[![사용 동영상](https://github.com/user-attachments/assets/b752d61e-040b-4041-b48c-94c8a803d8dd)](https://youtu.be/AExURzDv2UE?si=pqfsEcTX5duZP2kD)
 
 ---
 
