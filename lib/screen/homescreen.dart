@@ -74,30 +74,37 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
     expFetcher.fetchAndDisplayExpData(
       onUpdate: (exp, percentage, level) {
         setState(() {
-          if (initialExp == 0) {
-            initialExp = exp;
-            initialPercentage = percentage;
+          // 처음 한 번만 세팅
+          if (lastLevel == 0) {
+            lastLevel = level;
             lastExp = exp;
             lastPercentage = percentage;
-            lastLevel = level;
+            return;
           }
-          if (level != lastLevel) {
-            // 레벨 업
-            initialExp = exp;
-            initialPercentage = percentage;
 
+          if (level != lastLevel) {
+            // 레벨 업 로직
+            // 1) 이전 레벨의 남은 exp/퍼센트를 채워주고
             int levelUpExp = expDataLoader.getExpForLevel(lastLevel);
-            totalExp = totalExp + levelUpExp - lastExp + exp;
-            totalPercentage =
-                totalPercentage + 100.00 - lastPercentage + percentage;
+            totalExp += (levelUpExp - lastExp);
+            totalPercentage += (100.0 - lastPercentage);
+
+            // 2) 새 레벨에서 현재 exp/퍼센트를 추가
+            totalExp += exp;
+            totalPercentage += percentage;
+
+            // 마지막으로 현재 레벨/경험치 정보를 갱신
+            lastLevel = level;
+            lastExp = exp;
+            lastPercentage = percentage;
           } else {
-            // 경험치가 늘어난 경우 차이를 누적
-            totalExp = totalExp + exp - lastExp; // 경험치 누적
-            totalPercentage =
-                totalPercentage + percentage - lastPercentage; // 퍼센트 누적
+            // 레벨 변화 없는 경우 = exp/퍼센트 증가분만 누적
+            totalExp += (exp - lastExp);
+            totalPercentage += (percentage - lastPercentage);
+
+            lastExp = exp;
+            lastPercentage = percentage;
           }
-          lastExp = exp;
-          lastPercentage = percentage;
         });
       },
       onError: (errorMessage) {
@@ -172,7 +179,8 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
       backgroundColor: CupertinoColors.darkBackgroundGray,
       child: Stack(
         children: [
-          DragToMoveArea( // 창을 이동할 수 있도록 추가
+          DragToMoveArea(
+            // 창을 이동할 수 있도록 추가
             child: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -184,7 +192,8 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
                         width: 100,
                         height: 50,
                         child: CupertinoButton(
-                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          padding:
+                              EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           onPressed: () {
                             if (!isRunning && _elapsedTime == Duration.zero) {
                               initialExp = totalExp; // 시작 시 초기화 경험치
