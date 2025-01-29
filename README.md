@@ -22,7 +22,7 @@
 ---
 ## 유튜브 영상
 
-[![사용 동영상]((https://github.com/user-attachments/assets/5e2e5220-32be-4f9c-a7dc-ff90c2a07abb)](https://youtu.be/AExURzDv2UE?si=pqfsEcTX5duZP2kD)
+[![사용 동영상](https://github.com/user-attachments/assets/5e2e5220-32be-4f9c-a7dc-ff90c2a07abb)](https://youtu.be/AExURzDv2UE?si=pqfsEcTX5duZP2kD)
 
 ---
 
