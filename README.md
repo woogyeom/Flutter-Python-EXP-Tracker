@@ -16,12 +16,13 @@
    - 주기적으로 Flask 서버에 **HTTP 요청**을 보내어, EXP·퍼센트·레벨 등의 정보를 받아옴  
    - **Cupertino UI** 기반으로 데이터를 시각화  
    - **Timer**를 이용해 플레이 시간 측정 및 EXP 누적 계산  
-   - **서버 프로세스**(`ocr_server.exe`)를 종료하는 기능 제공
+   - **서버 상태**(정상/에러)를 UI 인디케이터(초록/빨강)로 표시  
+   - **서버 프로세스**(`ocr_server.exe`)를 실행/종료하는 기능 제공
 
 ---
 ## 유튜브 영상
 
-[![사용 동영상](https://github.com/user-attachments/assets/4957c5f6-7c81-4fcb-87c1-39472db4a13d)](https://youtu.be/x-dRERJdxmo)
+[![사용 동영상]((https://github.com/user-attachments/assets/5e2e5220-32be-4f9c-a7dc-ff90c2a07abb)](https://youtu.be/AExURzDv2UE?si=pqfsEcTX5duZP2kD)
 
 ---
 
@@ -33,7 +34,7 @@
   - Python: `OpenCV`, `pytesseract`, `mss`, `win32gui`, `numpy`
   - Flutter: `http`, `google_fonts`, `cupertino_icons`
 - **이미지 처리**: OpenCV (SIFT 알고리즘, 템플릿 매칭), Tesseract OCR
-- **배포**: Python Flask 서버를 `ocr_server.exe`로 빌드 후, Flutter에서 종료 관리
+- **배포**: Python Flask 서버를 `ocr_server.exe`로 빌드 후, Flutter에서 실행/종료 관리
 
 ---
 
@@ -71,8 +72,12 @@
       - `Timer.periodic`(1초 간격)으로 서버에 반복 요청을 보내 실시간으로 값을 업데이트  
       - 시작/중단/초기화 버튼을 이용해 타이머를 제어(플레이 시간, 획득 EXP 누적량 계산)  
 
-   3. **서버 프로세스(`ocr_server.exe`)**  
-      - `ServerManager` 클래스로 별도 EXE 프로세스를 종료  
+   3. **서버 상태 표시**  
+      - 요청이 성공하면 상태 `connected`, 실패(Timeout 등) 시 `error`  
+      - UI 왼쪽 상단에 초록/빨강 원형 인디케이터로 표시
+
+   4. **서버 프로세스(`ocr_server.exe`)**  
+      - `ServerManager` 클래스로 별도 EXE 프로세스를 실행/종료  
       - Windows CMD 명령어(`tasklist`, `taskkill`)로 특정 프로세스(`ocr_server.exe`)를 조회 후 강제 종료
 
 ---
@@ -83,7 +88,7 @@
   현재 예시는 `"MapleStory Worlds-Mapleland"`라는 제목으로 창을 찾습니다. 다른 게임/프로그램에 적용하려면 `get_window_rect(window_title_prefix)` 부분의 문자열을 변경해야 합니다.
   
 - **해상도/UI 차이**  
-  템플릿 매칭은 해상도나 UI 요소가 달라지면 인식률이 떨어질 수 있습니다. 현재 템플릿 이미지(`EXP.png`, `LV.png`)는 1600*900 이상의 해상도에서 테스트되었습니다.
+  템플릿 매칭은 해상도나 UI 요소가 달라지면 인식률이 떨어질 수 있습니다. 현재 템플릿 이미지(`EXP.png`, `LV.png`)는 1600*900이상의 해상도에서 테스트되었습니다.
 
 - **Tesseract 인식률**  
   OCR 결과가 불안정할 수 있으므로, 전처리(이진화, 블러, 대비 조정) 및 `tessedit_char_whitelist` 설정 등 세부 조정이 필요할 수 있습니다.
