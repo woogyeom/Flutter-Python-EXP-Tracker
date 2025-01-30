@@ -17,7 +17,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with WindowListener {
   bool isRunning = false;
-  String timerText = "00:00";
+  String timerText = "00:00:00";
   Timer? _timer;
   Duration _elapsedTime = Duration.zero;
 
@@ -161,9 +161,10 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
   // 시간 포맷
   String _formatDuration(Duration duration) {
     String twoDigits(int n) => n.toString().padLeft(2, "0");
+    String hours = twoDigits(duration.inHours.remainder(60));
     String minutes = twoDigits(duration.inMinutes.remainder(60));
     String seconds = twoDigits(duration.inSeconds.remainder(60));
-    return "$minutes:$seconds";
+    return "$hours:$minutes:$seconds";
   }
 
   @override
@@ -232,7 +233,7 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
                         style: GoogleFonts.roboto(
                           textStyle: const TextStyle(
                             color: CupertinoColors.white,
-                            fontSize: 60,
+                            fontSize: 48,
                             fontWeight: FontWeight.w400,
                           ),
                         ),
@@ -247,7 +248,7 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
                           textStyle: const TextStyle(
                             color: CupertinoColors.systemYellow,
                             fontWeight: FontWeight.w400,
-                            fontSize: 48,
+                            fontSize: 32,
                           ),
                         ),
                       ),

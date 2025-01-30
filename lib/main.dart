@@ -8,7 +8,7 @@ void main() async {
   await windowManager.ensureInitialized();
 
   WindowOptions windowOptions = WindowOptions(
-    size: Size(400, 250),
+    size: Size(400, 180),
     center: true,
     skipTaskbar: false,
     titleBarStyle: TitleBarStyle.hidden,
