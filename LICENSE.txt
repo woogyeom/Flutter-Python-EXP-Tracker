@@ -24,7 +24,8 @@ This software includes the following open-source packages:
 | Pydantic         | MIT License     |
 | re (Python regex module) | Python Standard Library |
 | os, sys (Python core modules) | Python Standard Library |
-
+| **Other Software** |  |
+| Tesseract OCR    | Apache License 2.0 |
 
 ---
 
@@ -52,7 +53,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ---
 
-## 📜 Apache License 2.0 (Applies to: google_fonts, OpenCV, Pytesseract)
+## 📜 Apache License 2.0 (Applies to: google_fonts, OpenCV, Pytesseract, Tesseract OCR)
 Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
