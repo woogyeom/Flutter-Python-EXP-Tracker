@@ -1,12 +1,15 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_exp_timer/exp_data_loader.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:window_manager/window_manager.dart';
+
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
-import '../server_manager.dart';
+
+import 'package:google_fonts/google_fonts.dart';
+import 'package:window_manager/window_manager.dart';
 import 'package:http/http.dart' as http;
+
+import 'package:flutter_exp_timer/exp_data_loader.dart';
+import 'package:flutter_exp_timer/screen/rect_select_screen.dart';
+import 'package:flutter_exp_timer/server_manager.dart';
 
 class MainScreen extends StatefulWidget {
   final ServerManager serverManager;
@@ -38,6 +41,9 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
 
   ExpDataLoader expDataLoader = ExpDataLoader();
 
+  Rect? levelRect;
+  Rect? expRect;
+
   @override
   void initState() {
     super.initState();
@@ -47,6 +53,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
 
   @override
   void dispose() {
+    print('dispose');
     super.dispose();
     windowManager.removeListener(this);
   }
@@ -105,8 +112,6 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
       isRunning = true;
     });
 
-    await windowManager.setOpacity(0.7);
-
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) async {
       setState(() {
         _elapsedTime += const Duration(seconds: 1);
@@ -123,8 +128,6 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
       isRunning = false;
       _timer?.cancel();
     });
-
-    await windowManager.setOpacity(1.0);
   }
 
   // 타이머 초기화
@@ -148,6 +151,29 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     return "$hours:$minutes:$seconds";
   }
 
+  // 영역 선택 스크린
+  void _openRectSelectScreen() async {
+    final result = await Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            RectSelectScreen(),
+        transitionDuration: Duration.zero, // ✅ 애니메이션 제거
+        reverseTransitionDuration: Duration.zero, // ✅ 뒤로 가기 애니메이션 제거
+      ),
+    );
+
+    if (result != null) {
+      print("✅ result가 정상적으로 들어왔습니다: $result");
+      print("🔹 levelRect: ${result['level']}");
+      print("🔹 expRect: ${result['exp']}");
+      setState(() {
+        levelRect = result['level'];
+        expRect = result['exp'];
+      });
+    }
+  }
+
   @override
   void onWindowClose() {
     print("Closing app...");
@@ -158,7 +184,9 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      backgroundColor: CupertinoColors.darkBackgroundGray,
+      backgroundColor: isRunning
+          ? CupertinoColors.darkBackgroundGray.withAlpha(200)
+          : CupertinoColors.darkBackgroundGray,
       child: Stack(
         children: [
           DragToMoveArea(
@@ -166,6 +194,9 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  SizedBox(
+                    height: 20,
+                  ),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -241,17 +272,30 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
           Positioned(
             top: 8,
             right: 8,
-            child: CupertinoButton(
-              padding: EdgeInsets.zero,
-              onPressed: () {
-                widget.serverManager.shutdownServer();
-                windowManager.close();
-              },
-              child: Icon(
-                CupertinoIcons.clear_thick_circled,
-                color: CupertinoColors.systemRed,
-                size: 30,
-              ),
+            child: Row(
+              children: [
+                CupertinoButton(
+                  padding: EdgeInsets.zero,
+                  onPressed: _openRectSelectScreen,
+                  child: Icon(
+                    CupertinoIcons.desktopcomputer,
+                    color: CupertinoColors.systemGrey6,
+                    size: 24,
+                  ),
+                ),
+                CupertinoButton(
+                  padding: EdgeInsets.zero,
+                  onPressed: () {
+                    widget.serverManager.shutdownServer();
+                    windowManager.close();
+                  },
+                  child: Icon(
+                    CupertinoIcons.clear_thick_circled,
+                    color: CupertinoColors.systemRed,
+                    size: 24,
+                  ),
+                ),
+              ],
             ),
           ),
         ],

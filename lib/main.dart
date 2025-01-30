@@ -6,13 +6,13 @@ import 'package:flutter_exp_timer/server_manager.dart'; // 서버 매니저 불�
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   await windowManager.ensureInitialized();
 
   WindowOptions windowOptions = WindowOptions(
-    size: Size(400, 180),
+    size: Size(400, 200),
     center: true,
     skipTaskbar: false,
+    backgroundColor: CupertinoColors.transparent,
     titleBarStyle: TitleBarStyle.hidden,
   );
 
