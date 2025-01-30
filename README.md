@@ -26,6 +26,9 @@
   - UI를 제공하며, 경험치 데이터를 시각적으로 표시합니다.
 - **서버** (`ocr_server.py`)
   - FastAPI로 구현된 OCR 서버로, 이미지에서 경험치와 레벨을 추출합니다.
+- **OCR 유틸리티** (`ocr_util.dart`)
+  - 서버로부터 경험치 데이터를 가져와 UI에 반영하는 역할을 합니다.
+  - HTTP 요청을 통해 `/extract_exp_and_level` API에서 데이터를 가져오며, 실패 시 예외 처리를 수행합니다.
 - **서버 매니저** (`server_manager.dart`)
   - FastAPI 서버를 실행 및 종료하는 기능을 담당합니다.
 - **데이터 로더** (`exp_data_loader.dart`)
