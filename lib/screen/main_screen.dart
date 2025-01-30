@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_exp_timer/exp_data_loader.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:window_manager/window_manager.dart';
 import 'dart:async';
@@ -7,16 +8,16 @@ import 'dart:io';
 import '../server_manager.dart';
 import 'package:http/http.dart' as http;
 
-class HomeScreen extends StatefulWidget {
+class MainScreen extends StatefulWidget {
   final ServerManager serverManager;
 
-  const HomeScreen({super.key, required this.serverManager});
+  const MainScreen({super.key, required this.serverManager});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<MainScreen> createState() => _MainScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with WindowListener {
+class _MainScreenState extends State<MainScreen> with WindowListener {
   bool isRunning = false;
   String timerText = "00:00:00";
   Timer? _timer;
@@ -34,6 +35,8 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
   double totalPercentage = 0.00;
 
   bool isErrorShown = false;
+
+  ExpDataLoader expDataLoader = ExpDataLoader();
 
   @override
   void initState() {
@@ -70,9 +73,8 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
           }
 
           if (level != lastLevel) {
-            print(
-                "Level up detected: $lastLevel -> $level, EXP: $lastExp -> $exp");
-            totalExp += (1000000 - lastExp); // 레벨업 시 경험치 계산
+            int levelUpExp = expDataLoader.getExpForLevel(lastLevel);
+            totalExp += (levelUpExp - lastExp);
             totalPercentage += (100.0 - lastPercentage);
 
             totalExp += exp;

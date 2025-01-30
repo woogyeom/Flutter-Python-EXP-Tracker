@@ -1,8 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:window_manager/window_manager.dart';
 
-import 'screen/homescreen.dart';
-import 'server_manager.dart'; // 서버 매니저 불러오기
+import 'package:flutter_exp_timer/screen/main_screen.dart';
+import 'package:flutter_exp_timer/server_manager.dart'; // 서버 매니저 불러오기
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,7 +44,7 @@ class MyApp extends StatelessWidget {
       theme: const CupertinoThemeData(
         brightness: Brightness.light,
       ),
-      home: HomeScreen(serverManager: serverManager),
+      home: MainScreen(serverManager: serverManager),
     );
   }
 }
