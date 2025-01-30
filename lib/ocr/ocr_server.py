@@ -76,7 +76,7 @@ def capture_window_with_mss(window_title_prefix):
     
     with mss.mss() as sct:
         screenshot = sct.grab(monitor)
-        img = np.array(screenshot)[:, :, :3]
+        img = Image.frombytes("RGB", screenshot.size, screenshot.rgb)
         return cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
 
 # SIFT 기반 템플릿 매칭
