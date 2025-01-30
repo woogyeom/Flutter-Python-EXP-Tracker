@@ -1,15 +1,16 @@
 import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:window_manager/window_manager.dart';
-
 import 'dart:async';
-import '../exp_data_loader.dart';
-import '../ocr/ocr_util.dart';
+import 'dart:convert';
+import 'dart:io';
 import '../server_manager.dart';
-import 'package:window_manager/window_manager.dart';
+import 'package:http/http.dart' as http;
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final ServerManager serverManager;
+
+  const HomeScreen({super.key, required this.serverManager});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -20,11 +21,7 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
   String timerText = "00:00:00";
   Timer? _timer;
   Duration _elapsedTime = Duration.zero;
-
-  ExpDataLoader expDataLoader = ExpDataLoader();
-
   bool isServerRunning = false;
-  ServerManager serverManager = ServerManager();
 
   int initialExp = 0;
   double initialPercentage = 0.00;
@@ -36,45 +33,35 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
   int totalExp = 0;
   double totalPercentage = 0.00;
 
-  final expFetcher = ExpFetcher('http://127.0.0.1:5000');
-
   bool isErrorShown = false;
-
-  // 서버 시작
-  void _startServer() {
-    serverManager.startServer();
-    setState(() {
-      isServerRunning = true;
-    });
-  }
-
-  // 서버 종료
-  void _shutdownServer() {
-    serverManager.shutdownServer();
-    setState(() {
-      isServerRunning = false;
-    });
-  }
 
   @override
   void initState() {
     super.initState();
-    expDataLoader.loadExpData();
-    windowManager.addListener(this); // Add window manager listener
+    windowManager.addListener(this);
+    widget.serverManager.startServer(); // 앱 실행 시 FastAPI 서버 실행
   }
 
   @override
   void dispose() {
     super.dispose();
-    windowManager.removeListener(this); // Remove window manager listener
+    windowManager.removeListener(this);
   }
 
-  // 경험치와 퍼센트를 가져오는 함수
-  void fetchAndDisplayExpData() {
-    expFetcher.fetchAndDisplayExpData(
-      onUpdate: (exp, percentage, level) {
+  // FastAPI에서 경험치 데이터 가져오기
+  Future<void> fetchAndDisplayExpData() async {
+    try {
+      final response = await http
+          .get(Uri.parse('http://127.0.0.1:5000/extract_exp_and_level'));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
         setState(() {
-          // 처음 한 번만 세팅
+          int exp = data['exp'];
+          double percentage = data['percentage'];
+          int level = data['level'];
+
           if (lastLevel == 0) {
             lastLevel = level;
             lastExp = exp;
@@ -83,22 +70,16 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
           }
 
           if (level != lastLevel) {
-            // 레벨 업 로직
-            // 1) 이전 레벨의 남은 exp/퍼센트를 채워주고
-            int levelUpExp = expDataLoader.getExpForLevel(lastLevel);
-            totalExp += (levelUpExp - lastExp);
+            totalExp += (1000000 - lastExp); // 레벨업 시 경험치 계산
             totalPercentage += (100.0 - lastPercentage);
 
-            // 2) 새 레벨에서 현재 exp/퍼센트를 추가
             totalExp += exp;
             totalPercentage += percentage;
 
-            // 마지막으로 현재 레벨/경험치 정보를 갱신
             lastLevel = level;
             lastExp = exp;
             lastPercentage = percentage;
           } else {
-            // 레벨 변화 없는 경우 = exp/퍼센트 증가분만 누적
             totalExp += (exp - lastExp);
             totalPercentage += (percentage - lastPercentage);
 
@@ -106,14 +87,15 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
             lastPercentage = percentage;
           }
         });
-      },
-      onError: (errorMessage) {
-        print("Error occurred: $errorMessage");
-      },
-    );
+      } else {
+        throw Exception("Failed to fetch EXP data");
+      }
+    } catch (e) {
+      print("Error fetching EXP data: $e");
+    }
   }
 
-  // 타이머 시작 함수
+  // 타이머 시작
   Future<void> _startTimer() async {
     setState(() {
       isRunning = true;
@@ -131,7 +113,7 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
     });
   }
 
-  // 타이머 멈추는 함수
+  // 타이머 멈추기
   Future<void> _stopTimer() async {
     setState(() {
       isRunning = false;
@@ -141,20 +123,15 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
     await windowManager.setOpacity(1.0);
   }
 
-  // 타이머 리셋 함수
-  void _clearTimerState() {
-    _elapsedTime = Duration.zero;
-    timerText = _formatDuration(_elapsedTime);
-  }
-
   // 타이머 초기화
   void _resetTimer() {
     setState(() {
       isRunning = false;
       _timer?.cancel();
-      _clearTimerState();
-      totalExp = 0; // 경험치 리셋 (총 경험치 초기화)
-      totalPercentage = 0.00; // 퍼센트 리셋 (총 퍼센트 초기화)
+      _elapsedTime = Duration.zero;
+      timerText = _formatDuration(_elapsedTime);
+      totalExp = 0;
+      totalPercentage = 0.00;
     });
   }
 
@@ -169,9 +146,9 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
 
   @override
   void onWindowClose() {
-    // 서버 종료 요청을 보내고, 창을 닫는 처리
-    _shutdownServer();
-    windowManager.close(); // 창을 닫습니다.
+    print("Closing app...");
+    widget.serverManager.shutdownServer(); // 서버 종료 후
+    windowManager.close(); // 앱 종료
   }
 
   @override
@@ -181,13 +158,12 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
       child: Stack(
         children: [
           DragToMoveArea(
-            // 창을 이동할 수 있도록 추가
             child: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.center, // 가로로 중앙 정렬
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       SizedBox(
                         width: 100,
@@ -197,7 +173,7 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
                               EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           onPressed: () {
                             if (!isRunning && _elapsedTime == Duration.zero) {
-                              initialExp = totalExp; // 시작 시 초기화 경험치
+                              initialExp = totalExp;
                               _startTimer();
                             } else if (isRunning) {
                               _stopTimer();
@@ -243,7 +219,7 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
                   Column(
                     children: [
                       Text(
-                        '+ $totalExp [${totalPercentage.toStringAsFixed(2)}%]', // 경험치와 퍼센트 차이
+                        '+ $totalExp [${totalPercentage.toStringAsFixed(2)}%]',
                         style: GoogleFonts.roboto(
                           textStyle: const TextStyle(
                             color: CupertinoColors.systemYellow,
@@ -258,15 +234,14 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
               ),
             ),
           ),
-          // 종료 버튼 추가 (우측 상단)
           Positioned(
             top: 8,
             right: 8,
             child: CupertinoButton(
               padding: EdgeInsets.zero,
               onPressed: () {
-                _shutdownServer();
-                windowManager.close(); // 창을 닫는 처리
+                widget.serverManager.shutdownServer();
+                windowManager.close();
               },
               child: Icon(
                 CupertinoIcons.clear_thick_circled,

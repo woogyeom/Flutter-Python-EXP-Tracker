@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
-import 'screen/homescreen.dart';
 import 'package:window_manager/window_manager.dart';
+
+import 'screen/homescreen.dart';
+import 'server_manager.dart'; // 서버 매니저 불러오기
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,19 +26,25 @@ void main() async {
     await windowManager.focus();
   });
 
-  runApp(const MyApp());
+  // ServerManager 인스턴스 생성 후 실행
+  ServerManager serverManager = ServerManager();
+  // serverManager.startServer();
+
+  runApp(MyApp(serverManager: serverManager));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final ServerManager serverManager;
+
+  const MyApp({super.key, required this.serverManager});
 
   @override
   Widget build(BuildContext context) {
-    return const CupertinoApp(
-      theme: CupertinoThemeData(
-        brightness: Brightness.light, // 밝은 모드 강제 설정
+    return CupertinoApp(
+      theme: const CupertinoThemeData(
+        brightness: Brightness.light,
       ),
-      home: HomeScreen(),
+      home: HomeScreen(serverManager: serverManager),
     );
   }
 }
