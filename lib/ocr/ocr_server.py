@@ -132,7 +132,7 @@ def find_lv_and_extract_level(image):
     lv_x, lv_y = sift_template_matching(gray, template_lv)
 
     lv_w, lv_h = template_lv.shape[::-1]
-    level_roi = image[lv_y - 5:lv_y + lv_h + 5, lv_x + lv_w:lv_x + lv_w + 100]
+    level_roi = image[lv_y:lv_y + lv_h + 5, lv_x + lv_w:lv_x + lv_w + 70]
 
     lower_orange = np.array([0, 50, 100])
     upper_orange = np.array([80, 255, 255])
@@ -144,6 +144,11 @@ def find_lv_and_extract_level(image):
     contrast_enhanced = cv2.convertScaleAbs(gray_resized, alpha=1.5, beta=30)
     _, thresh = cv2.threshold(contrast_enhanced, 150, 255, cv2.THRESH_BINARY)
     filtered = cv2.GaussianBlur(thresh, (3, 3), 0)
+
+    # 전처리된 ROI 저장 (디버깅용)
+    # debug_save_path = os.path.join(base_path, "level_roi_debug.png")
+    # cv2.imwrite(debug_save_path, filtered)
+    # print(f"Processed Level ROI saved at {debug_save_path}")
 
     custom_config = r'--oem 3 --psm 6'
     extracted_text = pytesseract.image_to_string(filtered, lang="digits", config=custom_config)

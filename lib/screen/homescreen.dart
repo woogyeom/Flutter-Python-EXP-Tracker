@@ -70,6 +70,8 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
           }
 
           if (level != lastLevel) {
+            print(
+                "Level up detected: $lastLevel -> $level, EXP: $lastExp -> $exp");
             totalExp += (1000000 - lastExp); // 레벨업 시 경험치 계산
             totalPercentage += (100.0 - lastPercentage);
 
