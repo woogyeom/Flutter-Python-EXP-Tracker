@@ -290,8 +290,10 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                     padding: EdgeInsets.all(8),
                     onPressed: () {
                       if (!roiSet) {
+                        _openRectSelectScreen();
                         return;
                       }
+
                       if (!isRunning && _elapsedTime == Duration.zero) {
                         initialExp = totalExp;
                         _startTimer();

@@ -1,5 +1,9 @@
 # License Information for Flutter-Python-EXP-Tracker
 
+📜 Program License
+This code is provided for personal use for MapleLand players only, and redistribution, whether commercial or non-commercial, is not allowed.
+Modifications and personal use of the code are permitted, but external distribution or commercial use is prohibited.
+
 This software includes the following open-source packages:
 
 ---
