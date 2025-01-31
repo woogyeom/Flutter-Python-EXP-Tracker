@@ -26,9 +26,8 @@ void main() async {
     await windowManager.focus();
   });
 
-  // ServerManager 인스턴스 생성 후 실행
   ServerManager serverManager = ServerManager();
-  // serverManager.startServer();
+  serverManager.startServer();
 
   runApp(MyApp(serverManager: serverManager));
 }

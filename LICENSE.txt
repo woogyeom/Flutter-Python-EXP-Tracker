@@ -5,31 +5,36 @@ This software includes the following open-source packages:
 ---
 
 ## 📌 Included Libraries and Licenses:
-| Library           | License Type     |
-|------------------|----------------|
-| **Flutter Libraries** |  |
-| window_manager   | MIT License     |
-| cupertino_icons  | MIT License     |
-| google_fonts     | Apache License 2.0 |
-| http             | BSD 3-Clause    |
-| **Python Libraries** |  |
-| FastAPI          | MIT License     |
-| Uvicorn          | BSD 3-Clause    |
-| OpenCV (cv2)     | Apache License 2.0 |
-| Pytesseract      | Apache License 2.0 |
-| NumPy            | BSD 3-Clause    |
-| Pillow (PIL)     | MIT-CMU License |
-| mss              | MIT License     |
-| pywin32 (win32gui) | BSD-style License |
-| Pydantic         | MIT License     |
-| re (Python regex module) | Python Standard Library |
-| os, sys (Python core modules) | Python Standard Library |
-| **Other Software** |  |
-| Tesseract OCR    | Apache License 2.0 |
+Flutter Libraries:
+
+window_manager: MIT License
+cupertino_icons: MIT License
+google_fonts: Apache License 2.0
+http: BSD 3-Clause
+url_launcher: BSD 3-Clause
+
+Python Libraries:
+
+FastAPI: MIT License
+Uvicorn: BSD 3-Clause
+OpenCV (cv2): Apache License 2.0
+Pytesseract: Apache License 2.0
+NumPy: BSD 3-Clause
+Pillow (PIL): HPND License
+mss: MIT License
+pywin32 (win32gui): BSD-style License
+Pydantic: MIT License
+re (Python regex module): Python Standard Library
+os, sys (Python core modules): Python Standard Library
+json, asyncio (Python core modules): Python Standard Library
+
+Other Software:
+
+Tesseract OCR: Apache License 2.0
 
 ---
 
-## 📜 MIT License (Applies to: window_manager, cupertino_icons, FastAPI, mss, Pydantic)
+## 📜 MIT License
 The MIT License (MIT)
 
 Copyright (c) 2016 Vladimir Kharlampidi
@@ -53,7 +58,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ---
 
-## 📜 Apache License 2.0 (Applies to: google_fonts, OpenCV, Pytesseract, Tesseract OCR)
+## 📜 Apache License 2.0
 Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
@@ -258,7 +263,7 @@ Apache License
 
 ---
 
-## 📜 BSD 3-Clause License (Applies to: http, Uvicorn, NumPy)
+## 📜 BSD 3-Clause License
 Copyright 2014, the Dart project authors. 
 
 Redistribution and use in source and binary forms, with or without
@@ -289,7 +294,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ---
 
-## 📜 MIT-CMU License (Applies to: Pillow (PIL))
+## 📜 MIT-CMU License
 The Python Imaging Library (PIL) is:
 
     Copyright © 1997-2011 by Secret Labs AB
@@ -323,7 +328,7 @@ PERFORMANCE OF THIS SOFTWARE.
 
 ---
 
-## 📜 Copyright (c) 1994-2008, Mark Hammond (Applies to: pywin32)
+## 📜 Copyright (c) 1994-2008, Mark Hammond
 Unless stated in the specfic source file, this work is
 Copyright (c) 1994-2008, Mark Hammond
 All rights reserved.
@@ -357,7 +362,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ---
 
-## 📜 Python Standard Library (Applies to: os, sys, re)
+## 📜 Python Standard Library
 The Python Standard Library is licensed under the Python Software Foundation License.
 
 - https://docs.python.org/3/license.html

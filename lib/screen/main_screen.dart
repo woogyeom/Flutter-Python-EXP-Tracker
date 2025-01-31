@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:flutter_exp_timer/exp_data_loader.dart';
 import 'package:flutter_exp_timer/screen/rect_select_screen.dart';
@@ -38,6 +39,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   double totalPercentage = 0.00;
 
   bool isErrorShown = false;
+  bool roiSet = false;
 
   ExpDataLoader expDataLoader = ExpDataLoader();
 
@@ -48,7 +50,6 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   void initState() {
     super.initState();
     windowManager.addListener(this);
-    widget.serverManager.startServer(); // 앱 실행 시 FastAPI 서버 실행
   }
 
   @override
@@ -56,6 +57,44 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     print('dispose');
     super.dispose();
     windowManager.removeListener(this);
+  }
+
+  Future<void> sendROIToServer() async {
+    if (levelRect == null || expRect == null) {
+      print("ROI 데이터가 설정되지 않았습니다.");
+      return;
+    }
+
+    final url = Uri.parse("http://127.0.0.1:5000/set_roi");
+
+    final body = jsonEncode({
+      "level": [
+        levelRect!.left,
+        levelRect!.top,
+        levelRect!.right,
+        levelRect!.bottom
+      ],
+      "exp": [expRect!.left, expRect!.top, expRect!.right, expRect!.bottom],
+    });
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: body,
+      );
+
+      if (response.statusCode == 200) {
+        setState(() {
+          roiSet = true;
+        });
+        print("ROI 데이터 성공적으로 서버에 전송됨: ${response.body}");
+      } else {
+        print("서버 오류: ${response.statusCode} - ${response.body}");
+      }
+    } catch (e) {
+      print("ROI 전송 중 오류 발생: $e");
+    }
   }
 
   // FastAPI에서 경험치 데이터 가져오기
@@ -164,13 +203,23 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     );
 
     if (result != null) {
-      print("✅ result가 정상적으로 들어왔습니다: $result");
-      print("🔹 levelRect: ${result['level']}");
-      print("🔹 expRect: ${result['exp']}");
       setState(() {
         levelRect = result['level'];
         expRect = result['exp'];
       });
+      sendROIToServer();
+    }
+  }
+
+  // 깃허브 링크
+  void _launchURL() async {
+    final Uri url =
+        Uri.parse("https://github.com/woogyeom/Flutter-Python-EXP-Tracker");
+
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      throw "Could not launch $url";
     }
   }
 
@@ -187,98 +236,29 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
       backgroundColor: isRunning
           ? CupertinoColors.darkBackgroundGray.withAlpha(200)
           : CupertinoColors.darkBackgroundGray,
-      child: Stack(
-        children: [
-          DragToMoveArea(
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    height: 20,
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: 100,
-                        height: 50,
-                        child: CupertinoButton(
-                          padding:
-                              EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          onPressed: () {
-                            if (!isRunning && _elapsedTime == Duration.zero) {
-                              initialExp = totalExp;
-                              _startTimer();
-                            } else if (isRunning) {
-                              _stopTimer();
-                            } else {
-                              _resetTimer();
-                            }
-                          },
-                          color: isRunning
-                              ? CupertinoColors.systemRed
-                              : _elapsedTime == Duration.zero
-                                  ? CupertinoColors.systemGreen
-                                  : CupertinoColors.systemBlue,
-                          borderRadius: BorderRadius.circular(16),
-                          child: Text(
-                            isRunning
-                                ? '중단'
-                                : _elapsedTime == Duration.zero
-                                    ? '시작'
-                                    : '초기화',
-                            style: GoogleFonts.roboto(
-                              textStyle: const TextStyle(
-                                color: CupertinoColors.white,
-                                fontSize: 24,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Text(
-                        timerText,
-                        style: GoogleFonts.roboto(
-                          textStyle: const TextStyle(
-                            color: CupertinoColors.white,
-                            fontSize: 48,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  Column(
-                    children: [
-                      Text(
-                        '+ $totalExp [${totalPercentage.toStringAsFixed(2)}%]',
-                        style: GoogleFonts.roboto(
-                          textStyle: const TextStyle(
-                            color: CupertinoColors.systemYellow,
-                            fontWeight: FontWeight.w400,
-                            fontSize: 32,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+      child: DragToMoveArea(
+        child: Column(
+          children: [
+            SizedBox(
+              height: 4,
             ),
-          ),
-          Positioned(
-            top: 8,
-            right: 8,
-            child: Row(
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
+                CupertinoButton(
+                  padding: EdgeInsets.zero,
+                  onPressed: _launchURL,
+                  child: Icon(
+                    CupertinoIcons.info,
+                    color: CupertinoColors.systemGrey6,
+                    size: 24,
+                  ),
+                ),
                 CupertinoButton(
                   padding: EdgeInsets.zero,
                   onPressed: _openRectSelectScreen,
                   child: Icon(
-                    CupertinoIcons.desktopcomputer,
+                    CupertinoIcons.gear_solid,
                     color: CupertinoColors.systemGrey6,
                     size: 24,
                   ),
@@ -290,15 +270,87 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                     windowManager.close();
                   },
                   child: Icon(
-                    CupertinoIcons.clear_thick_circled,
+                    CupertinoIcons.xmark_circle_fill,
                     color: CupertinoColors.systemRed,
                     size: 24,
                   ),
                 ),
+                SizedBox(width: 8), // 오른쪽 패딩 추가
               ],
             ),
-          ),
-        ],
+            SizedBox(
+              height: 2,
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 80,
+                  child: CupertinoButton(
+                    padding: EdgeInsets.all(8),
+                    onPressed: () {
+                      if (!roiSet) {
+                        return;
+                      }
+                      if (!isRunning && _elapsedTime == Duration.zero) {
+                        initialExp = totalExp;
+                        _startTimer();
+                      } else if (isRunning) {
+                        _stopTimer();
+                      } else {
+                        _resetTimer();
+                      }
+                    },
+                    color: !roiSet
+                        ? CupertinoColors.systemGrey
+                        : isRunning
+                            ? CupertinoColors.systemRed
+                            : _elapsedTime == Duration.zero
+                                ? CupertinoColors.systemGreen
+                                : CupertinoColors.systemBlue,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Icon(
+                      !roiSet
+                          ? CupertinoIcons.wrench_fill
+                          : isRunning
+                              ? CupertinoIcons.stop_fill
+                              : _elapsedTime == Duration.zero
+                                  ? CupertinoIcons.play_arrow_solid
+                                  : CupertinoIcons.restart,
+                      color: CupertinoColors.white,
+                      size: 32,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Text(
+                  timerText,
+                  style: GoogleFonts.roboto(
+                    textStyle: const TextStyle(
+                      color: CupertinoColors.white,
+                      fontSize: 48,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(
+              height: 8,
+            ),
+            // 경험치 증가 표시
+            Text(
+              '+ $totalExp [${totalPercentage.toStringAsFixed(2)}%]',
+              style: GoogleFonts.roboto(
+                textStyle: const TextStyle(
+                  color: CupertinoColors.systemYellow,
+                  fontWeight: FontWeight.w400,
+                  fontSize: 32,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

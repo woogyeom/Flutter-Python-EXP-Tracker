@@ -6,24 +6,27 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 from PIL import Image
 import mss
-import win32gui
 import os
 import re
 import uvicorn
 from pydantic import BaseModel
+from typing import List
 
 # FastAPI 앱 생성
 app = FastAPI()
 
+# 전역 변수: Flutter에서 받은 ROI 좌표 저장
+roi_data = {"level": None, "exp": None}
+
 # 실행 파일 경로 설정 (PyInstaller 지원)
 if getattr(sys, 'frozen', False):
-    base_path = sys._MEIPASS  # PyInstaller 실행 파일 내부 경로
+    base_path = sys._MEIPASS
 else:
     base_path = os.path.dirname(__file__)
 
 print(f"Base path: {base_path}")
 
-# Tesseract-OCR 자동 감지 및 경로 설정
+# Tesseract-OCR 경로 설정
 tesseract_path = os.path.join(base_path, "Tesseract-OCR", "tesseract.exe")
 if os.path.exists(tesseract_path):
     pytesseract.pytesseract.tesseract_cmd = tesseract_path
@@ -31,148 +34,112 @@ if os.path.exists(tesseract_path):
 else:
     raise FileNotFoundError(f"Tesseract executable not found at {tesseract_path}")
 
-# 리소스 파일 경로 설정
-template_path_exp = os.path.join(base_path, "EXP.png")
-template_path_lv = os.path.join(base_path, "LV.png")
+# ROI 데이터 구조 정의
+class ROICoordinates(BaseModel):
+    level: List[float]  # [x1, y1, x2, y2]
+    exp: List[float]  # [x1, y1, x2, y2]
 
-print(f"Template paths: {template_path_exp}, {template_path_lv}")
+@app.post("/set_roi")
+async def set_roi(roi: ROICoordinates):
+    """Flutter에서 받은 ROI 데이터를 저장"""
+    global roi_data
+    roi_data["level"] = roi.level
+    roi_data["exp"] = roi.exp
+    print(f"ROI 데이터 저장됨: Level={roi.level}, EXP={roi.exp}")
+    return {"message": "ROI successfully updated", "level": roi.level, "exp": roi.exp}
 
-# 템플릿 이미지 로드
-template_exp = cv2.imread(template_path_exp, cv2.IMREAD_GRAYSCALE)
-template_lv = cv2.imread(template_path_lv, cv2.IMREAD_GRAYSCALE)
-
-# 윈도우 창 크기 가져오기
-def get_window_rect(window_title_prefix):
-    print(f"Looking for window with title starting with: {window_title_prefix}")
-    
-    def enum_windows_callback(hwnd_iter, result_list):
-        title = win32gui.GetWindowText(hwnd_iter)
-        if title.startswith(window_title_prefix):
-            result_list.append((hwnd_iter, title))
-
-    windows = []
-    win32gui.EnumWindows(enum_windows_callback, windows)
-
-    if not windows:
-        raise HTTPException(status_code=404, detail=f"No windows found with title '{window_title_prefix}'")
-
-    hwnd, title = windows[0]
-    left, top, right, bottom = win32gui.GetWindowRect(hwnd)
-    print(f"Window found: {title}, Rect: {left}, {top}, {right}, {bottom}")
-    return {"left": left, "top": top, "width": right - left, "height": bottom - top}
-
-# 창 캡처 함수
-def capture_window_with_mss(window_title_prefix):
-    print(f"Capturing window with title prefix: {window_title_prefix}")
-    rect = get_window_rect(window_title_prefix)
-    bottom_height = rect["height"] // 10
+# ROI 기반으로 직접 캡처 수행
+def capture_roi_with_mss(x1, y1, x2, y2):
+    """Flutter에서 받은 ROI 좌표만 캡처"""
     monitor = {
-        "top": rect["top"] + rect["height"] - bottom_height,
-        "left": rect["left"],
-        "width": rect["width"],
-        "height": bottom_height
+        "top": int(y1),
+        "left": int(x1),
+        "width": int(x2 - x1),
+        "height": int(y2 - y1)
     }
-    print(f"Capture area: {monitor}")
-    
+
     with mss.mss() as sct:
         screenshot = sct.grab(monitor)
         img = Image.frombytes("RGB", screenshot.size, screenshot.rgb)
         return cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
 
-# SIFT 기반 템플릿 매칭
-def sift_template_matching(image, template):
-    print("Starting SIFT template matching...")
-    sift = cv2.SIFT_create()
-    kp1, des1 = sift.detectAndCompute(template, None)
-    kp2, des2 = sift.detectAndCompute(image, None)
+# OCR을 위한 전처리 함수
+def preprocess_roi(roi):
+    """흰색이 아닌 색을 모두 검정색으로 변환 후 OCR 최적화"""
+    gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+    _, mask = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY)  # 밝은 부분 유지
+    resized = cv2.resize(mask, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)  # 확대
+    return cv2.GaussianBlur(resized, (3, 3), 0)  # 블러 추가
 
-    bf = cv2.BFMatcher()
-    matches = bf.knnMatch(des1, des2, k=2)
+# LV 및 EXP 값을 ROI 기반으로 추출
+def find_exp_and_lv():
+    """ROI 영역을 직접 캡처하여 OCR 수행"""
+    print("ROI에서 EXP 및 LV 데이터 추출 시작...")
 
-    good_matches = [m for m, n in matches if m.distance < 0.7 * n.distance]
+    # ROI가 설정되지 않았다면 오류 반환
+    if not roi_data["level"] or not roi_data["exp"]:
+        raise HTTPException(status_code=400, detail="ROI가 설정되지 않았습니다.")
 
-    if not good_matches:
-        raise HTTPException(status_code=404, detail="No matches found using SIFT.")
+    # ROI 좌표 가져오기
+    x1_lv, y1_lv, x2_lv, y2_lv = roi_data["level"]
+    x1_exp, y1_exp, x2_exp, y2_exp = roi_data["exp"]
 
-    best_match = good_matches[0]
-    pt_image = kp2[best_match.trainIdx].pt
-    pt_template = kp1[best_match.queryIdx].pt
-    exp_x = int(pt_image[0] - pt_template[0])
-    exp_y = int(pt_image[1] - pt_template[1])
-    print(f"Match found at: ({exp_x}, {exp_y})")
-    return exp_x, exp_y
+    # ROI 캡처 (Flutter에서 받은 좌표 기반)
+    level_roi = capture_roi_with_mss(x1_lv, y1_lv, x2_lv, y2_lv)
+    exp_roi = capture_roi_with_mss(x1_exp, y1_exp, x2_exp, y2_exp)
 
-# EXP 값 추출
-def find_exp_and_extract_number(image):
-    print("Finding EXP and extracting number...")
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    exp_x, exp_y = sift_template_matching(gray, template_exp)
+    # OCR을 위한 전처리
+    processed_exp = preprocess_roi(exp_roi)
+    processed_lv = preprocess_roi(level_roi)
 
-    exp_w, exp_h = template_exp.shape[::-1]
-    number_roi = image[exp_y - 5:exp_y + exp_h + 5, exp_x + exp_w:exp_x + exp_w + 200]
+    # 디버깅용 ROI 저장
+    cv2.imwrite(os.path.join(base_path, "exp_roi_debug.png"), processed_exp)
+    cv2.imwrite(os.path.join(base_path, "level_roi_debug.png"), processed_lv)
+    
+    print("EXP 및 LV ROI 저장 완료!")
 
-    gray_roi = cv2.cvtColor(number_roi, cv2.COLOR_BGR2GRAY)
-    gray_roi = cv2.resize(gray_roi, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
-    _, thresh = cv2.threshold(gray_roi, 150, 255, cv2.THRESH_BINARY)
-
-    custom_config = r'--oem 3 --psm 7 -c tessedit_char_whitelist="0123456789.[]%"'
-    extracted_text = pytesseract.image_to_string(thresh, config=custom_config)
-    print(f"Extracted text: {extracted_text}")
-
-    match = re.search(r"(\d+)[^\d]*(\d+\.\d+)%", extracted_text)
-    if match:
-        return int(match.group(1)), float(match.group(2))
-    else:
-        raise HTTPException(status_code=400, detail="Unable to parse EXP format.")
-
-# LV 값 추출
-def find_lv_and_extract_level(image):
-    print("Finding LV and extracting level...")
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    lv_x, lv_y = sift_template_matching(gray, template_lv)
-
-    lv_w, lv_h = template_lv.shape[::-1]
-    level_roi = image[lv_y:lv_y + lv_h + 5, lv_x + lv_w:lv_x + lv_w + 70]
-
-    lower_orange = np.array([0, 50, 100])
-    upper_orange = np.array([80, 255, 255])
-    mask = cv2.inRange(level_roi, lower_orange, upper_orange)
-    result = level_roi.copy()
-    result[mask == 255] = [0, 0, 0]
-    image_resized = cv2.resize(result, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
-    gray_resized = cv2.cvtColor(image_resized, cv2.COLOR_BGR2GRAY)
-    contrast_enhanced = cv2.convertScaleAbs(gray_resized, alpha=1.5, beta=30)
-    _, thresh = cv2.threshold(contrast_enhanced, 150, 255, cv2.THRESH_BINARY)
-    filtered = cv2.GaussianBlur(thresh, (3, 3), 0)
-
-    # 전처리된 ROI 저장 (디버깅용)
-    debug_save_path = os.path.join(base_path, "level_roi_debug.png")
-    cv2.imwrite(debug_save_path, filtered)
-    print(f"Processed Level ROI saved at {debug_save_path}")
-
+    # OCR 설정 및 실행
     custom_config = r'--oem 3 --psm 7'
-    extracted_text = pytesseract.image_to_string(filtered, lang="digits", config=custom_config)
+    extracted_exp_text = pytesseract.image_to_string(processed_exp, config=custom_config)
+    extracted_lv_text = pytesseract.image_to_string(processed_lv, lang='digits', config=custom_config)
 
-    extracted_text = extracted_text.replace(' ', '')
-    print(f"Extracted level text: {extracted_text}")
+    print(f"Extracted EXP text: {extracted_exp_text}")
+    print(f"Extracted Level text: {extracted_lv_text}")
 
-    match = re.search(r"\d+", extracted_text)
-    if match:
-        return int(match.group(0))
+    # EXP 데이터 파싱
+    extracted_exp_text = re.sub(r"[^\d.%\s]", "", extracted_exp_text)
+    exp_match = re.search(r"(\d+)\s*(\d+\.\d+)", extracted_exp_text)
+    if exp_match:
+        exp_value = int(exp_match.group(1))
+        exp_percentage = float(exp_match.group(2))
     else:
-        raise HTTPException(status_code=400, detail="Unable to parse level format.")
+        raise HTTPException(status_code=400, detail="EXP 데이터 파싱 실패")
 
+    # LV 데이터 파싱
+    extracted_lv_text = extracted_lv_text.replace(" ", "")
+    lv_match = re.search(r"\d+", extracted_lv_text)
+    if lv_match:
+        level = int(lv_match.group(0))
+    else:
+        raise HTTPException(status_code=400, detail="LV 데이터 파싱 실패")
+
+    return exp_value, exp_percentage, level
 
 @app.get("/extract_exp_and_level")
 async def extract_exp_and_level():
-    print("Starting to extract EXP and level data...")
-    screenshot = capture_window_with_mss("MapleStory Worlds-Mapleland")
-    exp, percentage = find_exp_and_extract_number(screenshot)
-    level = find_lv_and_extract_level(screenshot)
+    """저장된 ROI 정보를 활용해 EXP 및 LV 추출"""
+    print("ROI에서 EXP 및 LV 데이터 추출 시작...")
+    
+    if not roi_data["level"] or not roi_data["exp"]:
+        raise HTTPException(status_code=400, detail="ROI가 설정되지 않았습니다.")
 
-    print(f"Extracted EXP: {exp}, Percentage: {percentage}%, Level: {level}")
+    try:
+        exp, percentage, level = find_exp_and_lv()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"데이터 추출 중 오류 발생: {e}")
+
+    print(f"추출 완료 - EXP: {exp}, Percentage: {percentage}%, Level: {level}")
     return JSONResponse(content={"exp": exp, "percentage": percentage, "level": level})
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=5000, log_config=None)
-
+    uvicorn.run(app, host="127.0.0.1", port=5000, log_level="info")

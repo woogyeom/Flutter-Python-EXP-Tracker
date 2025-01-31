@@ -77,8 +77,16 @@ class _RectSelectScreenState extends State<RectSelectScreen> {
 
   void _returnSelection() async {
     if (levelRect != null && expRect != null) {
+      Rect bounds = await windowManager.getBounds();
+
+      Rect adjustedLevelRect = levelRect!.translate(bounds.left, bounds.top);
+      Rect adjustedExpRect = expRect!.translate(bounds.left, bounds.top);
+
       await _exitFullScreen();
-      Navigator.pop(context, {'level': levelRect, 'exp': expRect});
+
+      // 보정된 좌표를 반환
+      Navigator.pop(
+          context, {'level': adjustedLevelRect, 'exp': adjustedExpRect});
     }
   }
 

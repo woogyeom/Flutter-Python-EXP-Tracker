@@ -47,3 +47,5 @@ app.*.map.json
 # python build
 /lib/ocr/build/
 /lib/ocr/dist/
+/server/
+*.exe
