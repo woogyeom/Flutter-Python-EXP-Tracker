@@ -47,7 +47,7 @@
 
 [![사용 예시 영상](https://img.youtube.com/vi/Ia1Gz95vIlc/0.jpg)](https://youtu.be/Ia1Gz95vIlc?si=MjTNnO1jwr5yz5aG)
 
-위 링크를 클릭하시면 앱의 사용 예시를 확인하실 수 있습니다.
+위 이미지를 클릭하시면 앱의 사용 예시를 확인하실 수 있습니다.
 
 
 ---
