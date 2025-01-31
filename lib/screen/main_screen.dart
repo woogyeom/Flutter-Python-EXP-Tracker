@@ -50,6 +50,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   void initState() {
     super.initState();
     windowManager.addListener(this);
+    expDataLoader.loadExpData();
   }
 
   @override
@@ -120,6 +121,14 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
 
           if (level != lastLevel) {
             int levelUpExp = expDataLoader.getExpForLevel(lastLevel);
+
+            print("Level Up Detected!");
+            print("Previous Level: $lastLevel");
+            print("New Level: $level");
+            print("Last Exp: $lastExp");
+            print("Exp Required for Last Level: $levelUpExp");
+            print("Current Exp: $exp");
+
             totalExp += (levelUpExp - lastExp);
             totalPercentage += (100.0 - lastPercentage);
 
@@ -141,7 +150,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
         throw Exception("Failed to fetch EXP data");
       }
     } catch (e) {
-      print("Error fetching EXP data: $e");
+      print("[Server] Error fetching EXP data: $e");
     }
   }
 
