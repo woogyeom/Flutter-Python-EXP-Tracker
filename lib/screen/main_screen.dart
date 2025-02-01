@@ -339,10 +339,10 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
             // 타이머와 노란 텍스트 영역
             Expanded(
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
                   // 타이머
                   Container(
-                    height: 55,
                     alignment: Alignment.center,
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -393,7 +393,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                             textStyle: const TextStyle(
                               color: CupertinoColors.white,
                               fontSize: 48,
-                              height: 0.95,
+                              height: 1.2,
                             ),
                           ),
                         ),
@@ -401,36 +401,29 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                     ),
                   ),
                   // 노란 텍스트 영역: 남은 공간을 채우도록 Expanded로 감싸기
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          '$totalExp [${totalPercentage.toStringAsFixed(2)}%]',
-                          style: GoogleFonts.notoSans(
-                            textStyle: const TextStyle(
-                              color: CupertinoColors.systemYellow,
-                              fontWeight: FontWeight.w400,
-                              fontSize: 32,
-                            ),
-                          ),
-                        ),
-                        if (isAverage)
-                          Text(
-                            '$averageExp [${averagePercentage.toStringAsFixed(2)}%]',
-                            style: GoogleFonts.notoSans(
-                              textStyle: const TextStyle(
-                                color: CupertinoColors.systemYellow,
-                                fontWeight: FontWeight.w400,
-                                fontSize: 20,
-                              ),
-                            ),
-                          ),
-                        SizedBox(
-                          height: 16,
-                        ),
-                      ],
+                  Text(
+                    '$totalExp [${totalPercentage.toStringAsFixed(2)}%]',
+                    style: GoogleFonts.notoSans(
+                      textStyle: const TextStyle(
+                        color: CupertinoColors.systemYellow,
+                        fontWeight: FontWeight.w400,
+                        fontSize: 32,
+                      ),
                     ),
+                  ),
+                  if (isAverage)
+                    Text(
+                      '$averageExp [${averagePercentage.toStringAsFixed(2)}%]',
+                      style: GoogleFonts.notoSans(
+                        textStyle: const TextStyle(
+                          color: CupertinoColors.systemYellow,
+                          fontWeight: FontWeight.w400,
+                          fontSize: 20,
+                        ),
+                      ),
+                    ),
+                  SizedBox(
+                    height: 14,
                   ),
                 ],
               ),
