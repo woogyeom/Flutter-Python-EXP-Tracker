@@ -49,7 +49,7 @@
 
 ## 사용 예시 영상
 
-[![사용 예시 영상](https://img.youtube.com/vi/87UW8UHCmyo/maxresdefault.jpg)](https://youtu.be/87UW8UHCmyo?si=BICrKtZkny5kPd5C)
+[![사용 예시 영상](https://img.youtube.com/vi/87UW8UHCmyo/maxresdefault.jpg)](https://youtu.be/87UW8UHCmyo)
 
 위 이미지를 클릭하시면 앱의 사용 예시를 확인하실 수 있습니다.
 
