@@ -17,7 +17,7 @@ class _RectSelectScreenState extends State<RectSelectScreen> {
   Offset? _containerOffset; // 컨테이너 초기 위치
   Offset? _dragStartOffset;
   late Size _screenSize;
-  final Size _containerSize = Size(300, 100);
+  final Size _containerSize = Size(300, 180);
 
   @override
   void initState() {
@@ -181,13 +181,36 @@ class _RectSelectScreenState extends State<RectSelectScreen> {
                         ),
                       ],
                     ),
-                    child: Text(
-                      selectionStep == 0 ? "레벨 영역 선택" : "경험치 영역 선택",
-                      style: TextStyle(
-                        color: CupertinoColors.white,
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          selectionStep == 0 ? "레벨 영역 선택" : "경험치 영역 선택",
+                          style: TextStyle(
+                            color: CupertinoColors.white,
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(
+                          height: 8,
+                        ),
+                        Image.asset(selectionStep == 0
+                            ? 'assets/level_rect_sample.png'
+                            : 'assets/exp_rect_sample.png'),
+                        SizedBox(
+                          height: 8,
+                        ),
+                        Text(
+                          selectionStep == 0 ? "숫자만 포함되게" : "경험치 바까지",
+                          style: TextStyle(
+                            color: CupertinoColors.systemYellow,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

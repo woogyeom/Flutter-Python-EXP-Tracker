@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:flutter_exp_timer/exp_data_loader.dart';
+import 'package:flutter_exp_timer/screen/settings_screen.dart';
 import 'package:flutter_exp_timer/screen/rect_select_screen.dart';
 import 'package:flutter_exp_timer/server_manager.dart';
 
@@ -22,26 +23,29 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> with WindowListener {
+  ExpDataLoader expDataLoader = ExpDataLoader();
+
   bool isRunning = false;
+  bool isAverage = false;
+  bool isServerRunning = false;
+  bool isErrorShown = false;
+  bool isRoiSet = false;
+
   String timerText = "00:00:00";
   Timer? _timer;
   Duration _elapsedTime = Duration.zero;
-  bool isServerRunning = false;
 
   int initialExp = 0;
   double initialPercentage = 0.00;
-
   int lastExp = 0;
   double lastPercentage = 0.00;
   int lastLevel = 0;
-
   int totalExp = 0;
   double totalPercentage = 0.00;
+  int averageExp = 0;
+  double averagePercentage = 0.00;
 
-  bool isErrorShown = false;
-  bool roiSet = false;
-
-  ExpDataLoader expDataLoader = ExpDataLoader();
+  Duration timerEndTime = Duration.zero;
 
   Rect? levelRect;
   Rect? expRect;
@@ -87,7 +91,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
 
       if (response.statusCode == 200) {
         setState(() {
-          roiSet = true;
+          isRoiSet = true;
         });
         print("ROI 데이터 성공적으로 서버에 전송됨: ${response.body}");
       } else {
@@ -119,7 +123,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
             return;
           }
 
-          if (level != lastLevel) {
+          if (level != lastLevel && level != 1) {
             int levelUpExp = expDataLoader.getExpForLevel(lastLevel);
 
             print("Level Up Detected!");
@@ -145,6 +149,9 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
             lastExp = exp;
             lastPercentage = percentage;
           }
+
+          averageExp = ((totalExp / _elapsedTime.inSeconds) * 300).floor();
+          averagePercentage = (totalPercentage / _elapsedTime.inSeconds) * 300;
         });
       } else {
         throw Exception("Failed to fetch EXP data");
@@ -167,6 +174,10 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
       });
 
       fetchAndDisplayExpData();
+
+      if (timerEndTime != Duration.zero && _elapsedTime >= timerEndTime) {
+        _stopTimer();
+      }
     });
   }
 
@@ -187,6 +198,11 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
       timerText = _formatDuration(_elapsedTime);
       totalExp = 0;
       totalPercentage = 0.00;
+      lastLevel = 0;
+      lastExp = 0;
+      lastPercentage = 0.00;
+      averageExp = 0;
+      averagePercentage = 0.00;
     });
   }
 
@@ -200,14 +216,37 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   }
 
   // 영역 선택 스크린
+  void _openSettingsScreen() async {
+    final result = await Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => SettingsScreen(
+          isRunning: isRunning,
+          timerEndTime: timerEndTime,
+          isAverage: isAverage,
+        ),
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
+      ),
+    );
+
+    if (result != null) {
+      setState(() {
+        timerEndTime = result['timerEndTime'];
+        isAverage = result['isAverage'];
+      });
+    }
+  }
+
+  // 영역 선택 스크린
   void _openRectSelectScreen() async {
     final result = await Navigator.push(
       context,
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
             RectSelectScreen(),
-        transitionDuration: Duration.zero, // ✅ 애니메이션 제거
-        reverseTransitionDuration: Duration.zero, // ✅ 뒤로 가기 애니메이션 제거
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
       ),
     );
 
@@ -248,12 +287,12 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
       child: DragToMoveArea(
         child: Column(
           children: [
-            SizedBox(
-              height: 4,
-            ),
+            // 상단 버튼 Row
+            SizedBox(height: 4),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
+                SizedBox(width: 8),
                 CupertinoButton(
                   padding: EdgeInsets.zero,
                   onPressed: _launchURL,
@@ -263,9 +302,19 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                     size: 24,
                   ),
                 ),
+                SizedBox(width: 192),
                 CupertinoButton(
                   padding: EdgeInsets.zero,
                   onPressed: _openRectSelectScreen,
+                  child: Icon(
+                    CupertinoIcons.crop,
+                    color: CupertinoColors.systemGrey6,
+                    size: 24,
+                  ),
+                ),
+                CupertinoButton(
+                  padding: EdgeInsets.zero,
+                  onPressed: _openSettingsScreen,
                   child: Icon(
                     CupertinoIcons.gear_solid,
                     color: CupertinoColors.systemGrey6,
@@ -284,80 +333,106 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                     size: 24,
                   ),
                 ),
-                SizedBox(width: 8), // 오른쪽 패딩 추가
+                SizedBox(width: 8),
               ],
             ),
-            SizedBox(
-              height: 2,
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                SizedBox(
-                  width: 80,
-                  child: CupertinoButton(
-                    padding: EdgeInsets.all(8),
-                    onPressed: () {
-                      if (!roiSet) {
-                        _openRectSelectScreen();
-                        return;
-                      }
-
-                      if (!isRunning && _elapsedTime == Duration.zero) {
-                        initialExp = totalExp;
-                        _startTimer();
-                      } else if (isRunning) {
-                        _stopTimer();
-                      } else {
-                        _resetTimer();
-                      }
-                    },
-                    color: !roiSet
-                        ? CupertinoColors.systemGrey
-                        : isRunning
-                            ? CupertinoColors.systemRed
-                            : _elapsedTime == Duration.zero
-                                ? CupertinoColors.systemGreen
-                                : CupertinoColors.systemBlue,
-                    borderRadius: BorderRadius.circular(12),
-                    child: Icon(
-                      !roiSet
-                          ? CupertinoIcons.wrench_fill
-                          : isRunning
-                              ? CupertinoIcons.stop_fill
-                              : _elapsedTime == Duration.zero
-                                  ? CupertinoIcons.play_arrow_solid
-                                  : CupertinoIcons.restart,
-                      color: CupertinoColors.white,
-                      size: 32,
+            // 타이머와 노란 텍스트 영역
+            Expanded(
+              child: Column(
+                children: [
+                  // 타이머
+                  Container(
+                    height: 55,
+                    alignment: Alignment.center,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: 80,
+                          child: CupertinoButton(
+                            padding: EdgeInsets.zero,
+                            onPressed: () {
+                              if (!isRoiSet) {
+                                _openRectSelectScreen();
+                                return;
+                              }
+                              if (!isRunning && _elapsedTime == Duration.zero) {
+                                initialExp = totalExp;
+                                _startTimer();
+                              } else if (isRunning) {
+                                _stopTimer();
+                              } else {
+                                _resetTimer();
+                              }
+                            },
+                            color: !isRoiSet
+                                ? CupertinoColors.systemGrey
+                                : isRunning
+                                    ? CupertinoColors.systemRed
+                                    : _elapsedTime == Duration.zero
+                                        ? CupertinoColors.systemGreen
+                                        : CupertinoColors.systemBlue,
+                            borderRadius: BorderRadius.circular(12),
+                            child: Icon(
+                              !isRoiSet
+                                  ? CupertinoIcons.crop
+                                  : isRunning
+                                      ? CupertinoIcons.stop_fill
+                                      : _elapsedTime == Duration.zero
+                                          ? CupertinoIcons.play_arrow_solid
+                                          : CupertinoIcons.restart,
+                              color: CupertinoColors.white,
+                              size: 32,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Text(
+                          timerText,
+                          style: GoogleFonts.notoSans(
+                            textStyle: const TextStyle(
+                              color: CupertinoColors.white,
+                              fontSize: 48,
+                              height: 0.95,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-                const SizedBox(width: 16),
-                Text(
-                  timerText,
-                  style: GoogleFonts.roboto(
-                    textStyle: const TextStyle(
-                      color: CupertinoColors.white,
-                      fontSize: 48,
-                      fontWeight: FontWeight.w400,
+                  // 노란 텍스트 영역: 남은 공간을 채우도록 Expanded로 감싸기
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '$totalExp [${totalPercentage.toStringAsFixed(2)}%]',
+                          style: GoogleFonts.notoSans(
+                            textStyle: const TextStyle(
+                              color: CupertinoColors.systemYellow,
+                              fontWeight: FontWeight.w400,
+                              fontSize: 32,
+                            ),
+                          ),
+                        ),
+                        if (isAverage)
+                          Text(
+                            '$averageExp [${averagePercentage.toStringAsFixed(2)}%]',
+                            style: GoogleFonts.notoSans(
+                              textStyle: const TextStyle(
+                                color: CupertinoColors.systemYellow,
+                                fontWeight: FontWeight.w400,
+                                fontSize: 20,
+                              ),
+                            ),
+                          ),
+                        SizedBox(
+                          height: 16,
+                        ),
+                      ],
                     ),
                   ),
-                ),
-              ],
-            ),
-            SizedBox(
-              height: 8,
-            ),
-            // 경험치 증가 표시
-            Text(
-              '+ $totalExp [${totalPercentage.toStringAsFixed(2)}%]',
-              style: GoogleFonts.roboto(
-                textStyle: const TextStyle(
-                  color: CupertinoColors.systemYellow,
-                  fontWeight: FontWeight.w400,
-                  fontSize: 32,
-                ),
+                ],
               ),
             ),
           ],

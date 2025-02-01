@@ -135,11 +135,22 @@ async def extract_exp_and_level():
 
     try:
         exp, percentage, level = find_exp_and_lv()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"데이터 추출 중 오류 발생: {e}")
+        
+        # EXP 및 LEVEL 유효성 검사
+        if exp is None or percentage is None or level is None:
+            raise HTTPException(status_code=400, detail="EXP 또는 LEVEL 데이터가 유효하지 않습니다.")
 
-    print(f"추출 완료 - EXP: {exp}, Percentage: {percentage}%, Level: {level}")
-    return JSONResponse(content={"exp": exp, "percentage": percentage, "level": level})
+        print(f"추출 완료 - EXP: {exp}, Percentage: {percentage}%, Level: {level}")
+        return JSONResponse(content={"exp": exp, "percentage": percentage, "level": level})
+
+    except HTTPException as http_exc:
+        # HTTPException을 그대로 반환 (400 오류 유지)
+        raise http_exc
+
+    except Exception as e:
+        # 일반적인 예외 발생 시 500 대신 400 반환
+        print(f"데이터 추출 중 오류 발생: {e}")
+        raise HTTPException(status_code=400, detail=f"EXP 또는 LV 데이터 추출 실패: {e}")
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=5000, log_level="info")

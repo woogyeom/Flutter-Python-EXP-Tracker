@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'package:flutter_exp_timer/screen/main_screen.dart';
@@ -18,6 +19,7 @@ void main() async {
 
   await windowManager.setResizable(false);
   await windowManager.setAlwaysOnTop(true);
+  await windowManager.setMaximizable(false);
   await windowManager.setOpacity(1.0);
   await windowManager.setTitle('Tracker');
 
@@ -40,7 +42,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CupertinoApp(
-      theme: const CupertinoThemeData(
+      theme: CupertinoThemeData(
         brightness: Brightness.light,
       ),
       home: MainScreen(serverManager: serverManager),
