@@ -1,12 +1,12 @@
-# MapleLand EXP Tracker
+# Mapleland EXP Tracker
 
-**MapleLand EXP Tracker**는 MapleLand라는 온라인 게임에서 캐릭터의 경험치 상승을 지속적으로 측정하고 시각화해주는 Flutter-Python 기반 애플리케이션입니다.  
+**Mapleland EXP Tracker**는 Mapleland라는 온라인 게임에서 캐릭터의 경험치 상승을 지속적으로 측정하고 시각화해주는 Flutter-Python 기반 애플리케이션입니다.  
 사용자가 사냥하면서 캐릭터의 레벨 및 경험치 수치를 손쉽게 추적할 수 있도록 설계되었습니다.
 
 ---
 
 ### 앱의 구조 및 동작 과정
-**MapleLand EXP Tracker**는 **Flutter**로 개발된 클라이언트 앱과 **Python 기반 FastAPI** 서버로 구성되어 있습니다.  
+**Mapleland EXP Tracker**는 **Flutter**로 개발된 클라이언트 앱과 **Python 기반 FastAPI** 서버로 구성되어 있습니다.  
 각각의 역할과 동작 과정을 간략히 설명하면 다음과 같습니다:
 
 - **Flutter 클라이언트:**  
@@ -66,5 +66,5 @@
 ---
 
 ## 라이센스
-본 코드는 MapleLand 플레이어를 위한 개인 용도로 제공되며, 상업적/비상업적 재배포는 허용되지 않습니다.  
+본 코드는 Mapleland 플레이어를 위한 개인 용도로 제공되며, 상업적/비상업적 재배포는 허용되지 않습니다.  
 코드는 개인적인 수정 및 활용은 가능하나, 외부 배포 또는 상업적 이용은 금지됩니다.
