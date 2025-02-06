@@ -123,7 +123,8 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
             return;
           }
 
-          if (level != lastLevel && level != 1) {
+          if (level != lastLevel &&
+              (level - lastLevel == 1 || level - lastLevel == 2)) {
             int levelUpExp = expDataLoader.getExpForLevel(lastLevel);
 
             print("Level Up Detected!");

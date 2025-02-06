@@ -9,6 +9,9 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await windowManager.ensureInitialized();
 
+  ServerManager serverManager = ServerManager();
+  await serverManager.startServer();
+
   WindowOptions windowOptions = WindowOptions(
     size: Size(400, 200),
     center: true,
@@ -27,9 +30,6 @@ void main() async {
     await windowManager.show();
     await windowManager.focus();
   });
-
-  ServerManager serverManager = ServerManager();
-  serverManager.startServer();
 
   runApp(MyApp(serverManager: serverManager));
 }

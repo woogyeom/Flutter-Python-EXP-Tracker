@@ -19,7 +19,8 @@ class ServerManager {
 
     // FastAPI 서버 실행
     try {
-      Process.run("cmd", ["/c", "start", serverPath]); // cmd 창에서 실행
+      // Process.run("cmd", ["/c", "start", serverPath]); // cmd 창에서 실행
+      Process.start(serverPath, [], mode: ProcessStartMode.detached);
       print("FastAPI 서버가 콘솔 창에서 실행되었습니다.");
     } catch (e) {
       print("FastAPI 서버 실행 중 오류 발생: $e");
