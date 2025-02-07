@@ -73,6 +73,8 @@
 
 https://l.linklyhq.com/l/23vxv
 
+**현재 버전 1.0.2**
+
 ---
 
 ## 라이센스
