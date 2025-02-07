@@ -21,8 +21,10 @@ roi_data = {"level": None, "exp": None}
 # 실행 파일 경로 설정 (PyInstaller 지원)
 if getattr(sys, 'frozen', False):
     base_path = sys._MEIPASS
+    debug_base_path = os.path.dirname(sys.executable)
 else:
     base_path = os.path.dirname(__file__)
+    debug_base_path = base_path
 
 print(f"Base path: {base_path}")
 
@@ -37,7 +39,7 @@ else:
 # ROI 데이터 구조 정의
 class ROICoordinates(BaseModel):
     level: List[float]  # [x1, y1, x2, y2]
-    exp: List[float]  # [x1, y1, x2, y2]
+    exp: List[float]    # [x1, y1, x2, y2]
 
 @app.post("/set_roi")
 async def set_roi(roi: ROICoordinates):
@@ -67,7 +69,7 @@ def capture_roi_with_mss(x1, y1, x2, y2):
 def preprocess_roi(roi):
     """흰색이 아닌 색을 모두 검정색으로 변환 후 OCR 최적화"""
     gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-    _, mask = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY)  # 밝은 부분 유지
+    _, mask = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY)  # 밝은 부분 유지
     resized = cv2.resize(mask, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)  # 확대
     return cv2.GaussianBlur(resized, (3, 3), 0)  # 블러 추가
 
@@ -91,37 +93,39 @@ def find_exp_and_lv():
     # OCR을 위한 전처리
     processed_exp = preprocess_roi(exp_roi)
     processed_lv = preprocess_roi(level_roi)
-
-    # 디버깅용 ROI 저장
-    cv2.imwrite(os.path.join(base_path, "exp_roi_debug.png"), processed_exp)
-    cv2.imwrite(os.path.join(base_path, "level_roi_debug.png"), processed_lv)
     
     print("EXP 및 LV ROI 저장 완료!")
 
     # OCR 설정 및 실행
     custom_config = r'--oem 3 --psm 7'
-    extracted_exp_text = pytesseract.image_to_string(processed_exp, config=custom_config)
-    extracted_lv_text = pytesseract.image_to_string(processed_lv, lang='digits', config=custom_config)
+    extracted_exp_text_debug = pytesseract.image_to_string(processed_exp, lang='digits', config=custom_config)
+    extracted_lv_text_debug = pytesseract.image_to_string(processed_lv, lang='digits', config=custom_config)
 
-    print(f"Extracted EXP text: {extracted_exp_text}")
-    print(f"Extracted Level text: {extracted_lv_text}")
+    print(f"Extracted EXP text: {extracted_exp_text_debug}")
+    print(f"Extracted Level text: {extracted_lv_text_debug}")
+
+    # 인코딩 처리: UTF-8로 재인코딩하여 처리할 수 없는 특수문자는 무시
+    extracted_exp_text_debug = extracted_exp_text_debug.encode("utf-8", errors="ignore").decode("utf-8")
+    extracted_lv_text_debug = extracted_lv_text_debug.encode("utf-8", errors="ignore").decode("utf-8")
 
     # EXP 데이터 파싱
-    extracted_exp_text = re.sub(r"[^\d.%\s]", "", extracted_exp_text)
+    extracted_exp_text = re.sub(r"[^\d.%\s]", "", extracted_exp_text_debug)
     exp_match = re.search(r"(\d+)\s*(\d+\.\d+)", extracted_exp_text)
     if exp_match:
         exp_value = int(exp_match.group(1))
         exp_percentage = float(exp_match.group(2))
     else:
-        raise HTTPException(status_code=400, detail="EXP 데이터 파싱 실패")
+        cv2.imwrite(os.path.join(debug_base_path, "exp_roi_debug.png"), processed_exp)
+        raise HTTPException(status_code=400, detail=f"EXP 데이터 파싱 실패: '{extracted_exp_text_debug}'")
 
     # LV 데이터 파싱
-    extracted_lv_text = extracted_lv_text.replace(" ", "")
+    extracted_lv_text = extracted_lv_text_debug.replace(" ", "")
     lv_match = re.search(r"\d+", extracted_lv_text)
     if lv_match:
         level = int(lv_match.group(0))
     else:
-        raise HTTPException(status_code=400, detail="LV 데이터 파싱 실패")
+        cv2.imwrite(os.path.join(debug_base_path, "level_roi_debug.png"), processed_lv)
+        raise HTTPException(status_code=400, detail=f"LV 데이터 파싱 실패: '{extracted_lv_text_debug}'")
 
     return exp_value, exp_percentage, level
 
@@ -153,4 +157,4 @@ async def extract_exp_and_level():
         raise HTTPException(status_code=400, detail=f"EXP 또는 LV 데이터 추출 실패: {e}")
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=5000, log_level="info")
+    uvicorn.run(app, host="127.0.0.1", port=5000, log_level="info", log_config=None)

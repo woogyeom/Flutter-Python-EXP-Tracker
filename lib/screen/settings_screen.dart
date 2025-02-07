@@ -88,6 +88,15 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
+                Text(
+                  "Ver 1.0.2",
+                  style: GoogleFonts.notoSans(
+                    textStyle: const TextStyle(
+                      color: CupertinoColors.systemGrey6,
+                      fontSize: 16, // 🔥 폰트 크기 증가
+                    ),
+                  ),
+                ),
                 CupertinoButton(
                   padding: EdgeInsets.zero,
                   onPressed: () {

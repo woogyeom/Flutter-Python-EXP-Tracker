@@ -1,4 +1,4 @@
-import 'dart:ui';
+import 'dart:ui' as ui;
 import 'package:flutter/cupertino.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -75,18 +75,45 @@ class _RectSelectScreenState extends State<RectSelectScreen> {
     }
   }
 
-  void _returnSelection() async {
+  Future<void> _returnSelection() async {
     if (levelRect != null && expRect != null) {
-      Rect bounds = await windowManager.getBounds();
+      // 1. 현재 윈도우의 논리적 좌표 (예: top-left, width, height) 가져오기
+      Rect windowLogicalBounds = await windowManager.getBounds();
 
-      Rect adjustedLevelRect = levelRect!.translate(bounds.left, bounds.top);
-      Rect adjustedExpRect = expRect!.translate(bounds.left, bounds.top);
+      // 2. 현재 모니터의 devicePixelRatio (물리적/논리적) 가져오기
+      //    (만약 다중 모니터 상황에서 올바른 값이 나오지 않는다면 플랫폼별 API를 통해 DPI 인식을 개선해야 합니다.)
+      final double scale = View.of(context).devicePixelRatio;
+
+      // 3. 윈도우의 좌표도 물리적 좌표로 변환
+      Rect windowPhysicalBounds = Rect.fromLTWH(
+        windowLogicalBounds.left * scale,
+        windowLogicalBounds.top * scale,
+        windowLogicalBounds.width * scale,
+        windowLogicalBounds.height * scale,
+      );
+
+      // 4. 드래그로 얻은 ROI 좌표(논리적)를 물리적 좌표로 변환한 후, 윈도우의 물리적 좌표를 더합니다.
+      Rect absoluteLevelRect = Rect.fromLTRB(
+        (levelRect!.left * scale) + windowPhysicalBounds.left,
+        (levelRect!.top * scale) + windowPhysicalBounds.top,
+        (levelRect!.right * scale) + windowPhysicalBounds.left,
+        (levelRect!.bottom * scale) + windowPhysicalBounds.top,
+      );
+
+      Rect absoluteExpRect = Rect.fromLTRB(
+        (expRect!.left * scale) + windowPhysicalBounds.left,
+        (expRect!.top * scale) + windowPhysicalBounds.top,
+        (expRect!.right * scale) + windowPhysicalBounds.left,
+        (expRect!.bottom * scale) + windowPhysicalBounds.top,
+      );
 
       await _exitFullScreen();
 
-      // 보정된 좌표를 반환
+      // 이제 absoluteLevelRect, absoluteExpRect는 물리적 좌표이므로 서버에 전달하면 됨.
       Navigator.pop(
-          context, {'level': adjustedLevelRect, 'exp': adjustedExpRect});
+        context,
+        {'level': absoluteLevelRect, 'exp': absoluteExpRect},
+      );
     }
   }
 
