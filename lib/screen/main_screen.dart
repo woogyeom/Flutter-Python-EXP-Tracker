@@ -7,7 +7,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
-import 'package:path_provider/path_provider.dart';
 
 import 'package:flutter_exp_timer/exp_data_loader.dart';
 import 'package:flutter_exp_timer/screen/settings_screen.dart';

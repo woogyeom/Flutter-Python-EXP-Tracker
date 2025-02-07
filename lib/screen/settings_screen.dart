@@ -81,7 +81,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 Text(
-                  "Ver 1.0.2",
+                  "Ver 1.1.0",
                   style: GoogleFonts.notoSans(
                     textStyle: const TextStyle(
                       color: CupertinoColors.systemGrey6,
