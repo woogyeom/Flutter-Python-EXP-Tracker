@@ -1,12 +1,13 @@
 import 'package:flutter/cupertino.dart';
-
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:google_fonts/google_fonts.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'package:flutter_exp_timer/exp_data_loader.dart';
 import 'package:flutter_exp_timer/screen/settings_screen.dart';
@@ -55,13 +56,99 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     super.initState();
     windowManager.addListener(this);
     expDataLoader.loadExpData();
+    _loadConfig(); // 파일에 저장된 설정 불러오기
   }
 
   @override
   void dispose() {
     print('dispose');
-    super.dispose();
     windowManager.removeListener(this);
+    super.dispose();
+  }
+
+  Future<File> _getConfigFile() async {
+    const String configPath = "Config/config.json";
+    final Directory currentDir = Directory.current;
+    final File configFile = File('${currentDir.path}/$configPath');
+
+    if (!await configFile.parent.exists()) {
+      await configFile.parent.create(recursive: true);
+    }
+    if (!await configFile.exists()) {
+      await configFile.writeAsString("{}");
+    }
+
+    return configFile;
+  }
+
+  // 설정값을 JSON 파일로 저장
+  Future<void> _saveConfig() async {
+    final file = await _getConfigFile();
+    Map<String, dynamic> config = {
+      "levelRect": levelRect != null
+          ? {
+              "left": levelRect!.left,
+              "top": levelRect!.top,
+              "right": levelRect!.right,
+              "bottom": levelRect!.bottom,
+            }
+          : null,
+      "expRect": expRect != null
+          ? {
+              "left": expRect!.left,
+              "top": expRect!.top,
+              "right": expRect!.right,
+              "bottom": expRect!.bottom,
+            }
+          : null,
+      "timerEndTime": timerEndTime.inSeconds,
+      "showAverageExp": showAverageExp.inSeconds,
+    };
+    try {
+      await file.writeAsString(jsonEncode(config));
+      print("Config saved: ${jsonEncode(config)}");
+    } catch (e) {
+      print("Error saving config: $e");
+    }
+  }
+
+  // 설정값을 JSON 파일에서 불러오기
+  Future<void> _loadConfig() async {
+    try {
+      final file = await _getConfigFile();
+      if (await file.exists()) {
+        String content = await file.readAsString();
+        Map<String, dynamic> config = jsonDecode(content);
+
+        setState(() {
+          if (config["levelRect"] != null) {
+            Map<String, dynamic> rect = config["levelRect"];
+            levelRect = Rect.fromLTRB(
+              rect["left"],
+              rect["top"],
+              rect["right"],
+              rect["bottom"],
+            );
+            isRoiSet = true;
+          }
+          if (config["expRect"] != null) {
+            Map<String, dynamic> rect = config["expRect"];
+            expRect = Rect.fromLTRB(
+              rect["left"],
+              rect["top"],
+              rect["right"],
+              rect["bottom"],
+            );
+          }
+          timerEndTime = Duration(seconds: config["timerEndTime"]);
+          showAverageExp = Duration(seconds: config["showAverageExp"]);
+        });
+        print("Config loaded: $config");
+        isRoiSet = true;
+      }
+    } catch (e) {
+      print("Error loading config: $e");
+    }
   }
 
   Future<void> sendROIToServer() async {
@@ -111,55 +198,53 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
 
-        setState(
-          () {
-            int exp = data['exp'];
-            double percentage = data['percentage'];
-            int level = data['level'];
+        setState(() {
+          int exp = data['exp'];
+          double percentage = data['percentage'];
+          int level = data['level'];
 
-            if (lastLevel == 0) {
-              lastLevel = level;
-              lastExp = exp;
-              lastPercentage = percentage;
-              return;
-            }
+          if (lastLevel == 0) {
+            lastLevel = level;
+            lastExp = exp;
+            lastPercentage = percentage;
+            return;
+          }
 
-            if (level != lastLevel &&
-                (level - lastLevel == 1 || level - lastLevel == 2)) {
-              int levelUpExp = expDataLoader.getExpForLevel(lastLevel);
+          if (level != lastLevel &&
+              (level - lastLevel == 1 || level - lastLevel == 2)) {
+            int levelUpExp = expDataLoader.getExpForLevel(lastLevel);
 
-              print("Level Up Detected!");
-              print("Previous Level: $lastLevel");
-              print("New Level: $level");
-              print("Last Exp: $lastExp");
-              print("Exp Required for Last Level: $levelUpExp");
-              print("Current Exp: $exp");
+            print("Level Up Detected!");
+            print("Previous Level: $lastLevel");
+            print("New Level: $level");
+            print("Last Exp: $lastExp");
+            print("Exp Required for Last Level: $levelUpExp");
+            print("Current Exp: $exp");
 
-              totalExp += (levelUpExp - lastExp);
-              totalPercentage += (100.0 - lastPercentage);
+            totalExp += (levelUpExp - lastExp);
+            totalPercentage += (100.0 - lastPercentage);
 
-              totalExp += exp;
-              totalPercentage += percentage;
+            totalExp += exp;
+            totalPercentage += percentage;
 
-              lastLevel = level;
-              lastExp = exp;
-              lastPercentage = percentage;
-            } else {
-              totalExp += (exp - lastExp);
-              totalPercentage += (percentage - lastPercentage);
+            lastLevel = level;
+            lastExp = exp;
+            lastPercentage = percentage;
+          } else {
+            totalExp += (exp - lastExp);
+            totalPercentage += (percentage - lastPercentage);
 
-              lastExp = exp;
-              lastPercentage = percentage;
-            }
-            if (showAverageExp != Duration.zero) {
-              averageExp = ((totalExp / _elapsedTime.inSeconds) *
-                      showAverageExp.inSeconds)
-                  .floor();
-              averagePercentage = (totalPercentage / _elapsedTime.inSeconds) *
-                  showAverageExp.inSeconds;
-            }
-          },
-        );
+            lastExp = exp;
+            lastPercentage = percentage;
+          }
+          if (showAverageExp != Duration.zero) {
+            averageExp =
+                ((totalExp / _elapsedTime.inSeconds) * showAverageExp.inSeconds)
+                    .floor();
+            averagePercentage = (totalPercentage / _elapsedTime.inSeconds) *
+                showAverageExp.inSeconds;
+          }
+        });
       } else {
         throw Exception("Failed to fetch EXP data");
       }
@@ -222,7 +307,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     return "$hours:$minutes:$seconds";
   }
 
-  // 영역 선택 스크린
+  // 설정 화면 열기
   void _openSettingsScreen() async {
     final result = await Navigator.push(
       context,
@@ -242,10 +327,11 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
         timerEndTime = result['timerEndTime'];
         showAverageExp = result['showAverageExp'];
       });
+      _saveConfig(); // 변경된 설정 저장
     }
   }
 
-  // 영역 선택 스크린
+  // 영역 선택 스크린 열기
   void _openRectSelectScreen() async {
     final result = await Navigator.push(
       context,
@@ -262,11 +348,12 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
         levelRect = result['level'];
         expRect = result['exp'];
       });
+      _saveConfig(); // ROI 정보 저장
       sendROIToServer();
     }
   }
 
-  // 깃허브 링크
+  // 깃허브 링크 열기
   void _launchURL() async {
     final Uri url =
         Uri.parse("https://github.com/woogyeom/Flutter-Python-EXP-Tracker");
@@ -295,25 +382,25 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
         child: Column(
           children: [
             // 상단 버튼 Row
-            SizedBox(height: 4),
+            const SizedBox(height: 4),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 CupertinoButton(
                   padding: EdgeInsets.zero,
                   onPressed: _launchURL,
-                  child: Icon(
+                  child: const Icon(
                     CupertinoIcons.info,
                     color: CupertinoColors.systemGrey6,
                     size: 24,
                   ),
                 ),
-                SizedBox(width: 192),
+                const SizedBox(width: 192),
                 CupertinoButton(
                   padding: EdgeInsets.zero,
                   onPressed: _openRectSelectScreen,
-                  child: Icon(
+                  child: const Icon(
                     CupertinoIcons.crop,
                     color: CupertinoColors.systemGrey6,
                     size: 24,
@@ -322,7 +409,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                 CupertinoButton(
                   padding: EdgeInsets.zero,
                   onPressed: _openSettingsScreen,
-                  child: Icon(
+                  child: const Icon(
                     CupertinoIcons.gear_solid,
                     color: CupertinoColors.systemGrey6,
                     size: 24,
@@ -334,16 +421,16 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                     widget.serverManager.shutdownServer();
                     windowManager.close();
                   },
-                  child: Icon(
+                  child: const Icon(
                     CupertinoIcons.xmark_circle_fill,
                     color: CupertinoColors.systemRed,
                     size: 24,
                   ),
                 ),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
               ],
             ),
-            // 타이머와 노란 텍스트 영역
+            // 타이머와 텍스트 영역
             Expanded(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -407,7 +494,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                       ],
                     ),
                   ),
-                  // 노란 텍스트 영역: 남은 공간을 채우도록 Expanded로 감싸기
+                  // EXP 텍스트 영역
                   Text(
                     '$totalExp [${totalPercentage.toStringAsFixed(2)}%]',
                     style: GoogleFonts.notoSans(
@@ -429,9 +516,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                         ),
                       ),
                     ),
-                  SizedBox(
-                    height: 14,
-                  ),
+                  const SizedBox(height: 14),
                 ],
               ),
             ),
