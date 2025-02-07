@@ -66,7 +66,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   }
 
   Future<File> _getConfigFile() async {
-    const String configPath = "Config/config.json";
+    const String configPath = "config/config.json";
     final Directory currentDir = Directory.current;
     final File configFile = File('${currentDir.path}/$configPath');
 
