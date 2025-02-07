@@ -5,71 +5,64 @@ import 'package:window_manager/window_manager.dart';
 class SettingsScreen extends StatefulWidget {
   final bool isRunning;
   final Duration timerEndTime;
-  final bool isAverage;
+  final Duration showAverageExp;
 
   const SettingsScreen({
     Key? key,
     required this.isRunning,
     required this.timerEndTime,
-    required this.isAverage,
-  }) : super(
-          key: key,
-        );
+    required this.showAverageExp,
+  }) : super(key: key);
 
   @override
   _SettingsScreenState createState() => _SettingsScreenState();
 }
 
 class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
-  int _selectedOption = 0;
-  bool option1 = false;
+  int _selectedOption1 = 0;
+  int _selectedOption2 = 0;
 
   @override
   void initState() {
     super.initState();
-    _setWindowSize();
-
-    _selectedOption = _getSelectedOptionFromDuration(widget.timerEndTime);
-    option1 = widget.isAverage;
+    _selectedOption1 = _getSelectedOptionFromDuration(widget.timerEndTime);
+    _selectedOption2 = _getSelectedOptionFromDuration(widget.showAverageExp);
   }
 
+  /// Duration 값을 각 옵션에 해당하는 정수로 변환합니다.
   int _getSelectedOptionFromDuration(Duration duration) {
-    if (duration == Duration.zero) return 0; // 무한
-    if (duration == Duration(minutes: 5)) return 1;
-    if (duration == Duration(minutes: 15)) return 2;
-    if (duration == Duration(minutes: 30)) return 3;
-    if (duration == Duration(hours: 1)) return 4;
-    return 0; // 기본값 (예외 처리)
+    if (duration == Duration.zero) return 0; // 무한 또는 없음
+    if (duration == const Duration(minutes: 5)) return 1;
+    if (duration == const Duration(minutes: 15)) return 2;
+    if (duration == const Duration(minutes: 30)) return 3;
+    if (duration == const Duration(hours: 1)) return 4;
+    return 0;
   }
 
-  Future<void> _setWindowSize() async {
-    // 창 크기를 400x600으로 설정하고, 크기 변경을 제한할 수 있습니다.
-    await windowManager.setSize(const Size(400, 200));
-  }
-
-  void _return() async {
-    await windowManager.setSize(const Size(400, 200));
-
-    Duration selectedDuration;
-    switch (_selectedOption) {
+  /// 선택된 옵션 값에 따라 Duration을 반환합니다.
+  Duration _durationFromSelectedOption(int option) {
+    switch (option) {
       case 1:
-        selectedDuration = Duration(minutes: 5);
-        break;
+        return const Duration(minutes: 5);
       case 2:
-        selectedDuration = Duration(minutes: 15);
-        break;
+        return const Duration(minutes: 15);
       case 3:
-        selectedDuration = Duration(minutes: 30);
-        break;
+        return const Duration(minutes: 30);
       case 4:
-        selectedDuration = Duration(hours: 1);
-        break;
+        return const Duration(hours: 1);
       default:
-        selectedDuration = Duration.zero; // 무한(제한 없음)
+        return Duration.zero; // 무한 또는 없음
     }
+  }
 
-    Navigator.pop(
-        context, {'timerEndTime': selectedDuration, 'isAverage': option1});
+  /// 설정 화면 종료 후, 선택된 옵션을 반환합니다.
+  Future<void> _closeSettings() async {
+    final selectedDuration1 = _durationFromSelectedOption(_selectedOption1);
+    final selectedDuration2 = _durationFromSelectedOption(_selectedOption2);
+    Navigator.pop(context, {
+      'timerEndTime': selectedDuration1,
+      'showAverageExp': selectedDuration2,
+    });
   }
 
   @override
@@ -82,9 +75,8 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(height: 4),
-
-            // 상단 닫기 버튼
+            const SizedBox(height: 4),
+            // 상단 버튼 영역
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
@@ -93,172 +85,110 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
                   style: GoogleFonts.notoSans(
                     textStyle: const TextStyle(
                       color: CupertinoColors.systemGrey6,
-                      fontSize: 16, // 🔥 폰트 크기 증가
+                      fontSize: 16,
                     ),
                   ),
                 ),
                 CupertinoButton(
                   padding: EdgeInsets.zero,
-                  onPressed: () {
-                    _return();
-                  },
-                  child: Icon(
-                    CupertinoIcons.xmark_circle_fill,
+                  onPressed: _closeSettings,
+                  child: const Icon(
+                    CupertinoIcons.arrow_uturn_left_circle_fill,
                     color: CupertinoColors.systemRed,
                     size: 24,
                   ),
                 ),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
               ],
             ),
-
-            // 옵션 리스트
+            // 옵션 영역
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 48),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start, // 왼쪽 정렬
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // 타이머 시간 옵션
                   Text(
                     "타이머 시간",
                     style: GoogleFonts.notoSans(
                       textStyle: const TextStyle(
                         color: CupertinoColors.systemGrey6,
-                        fontSize: 18, // 🔥 폰트 크기 증가
+                        fontSize: 14,
                       ),
                     ),
                   ),
+                  const SizedBox(height: 4),
                   CupertinoSegmentedControl<int>(
-                    padding: EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(4),
                     unselectedColor: CupertinoColors.darkBackgroundGray,
-                    groupValue: _selectedOption, // 현재 선택된 값
+                    groupValue: _selectedOption1,
                     children: {
-                      0: Padding(
-                        padding: EdgeInsets.all(4),
-                        child: SizedBox(
-                          width: 60, // 🔥 개별 버튼 크기 고정
-                          child: Center(
-                            child: Text(
-                              "무한",
-                              style: GoogleFonts.notoSans(
-                                textStyle: const TextStyle(
-                                  color: CupertinoColors.systemGrey6,
-                                  fontSize: 18, // 🔥 폰트 크기 증가
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      1: Padding(
-                        padding: EdgeInsets.all(4),
-                        child: SizedBox(
-                          width: 60,
-                          child: Center(
-                            child: Text(
-                              "5분",
-                              style: GoogleFonts.notoSans(
-                                textStyle: const TextStyle(
-                                  color: CupertinoColors.systemGrey6,
-                                  fontSize: 18,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      2: Padding(
-                        padding: EdgeInsets.all(4),
-                        child: SizedBox(
-                          width: 60,
-                          child: Center(
-                            child: Text(
-                              "15분",
-                              style: GoogleFonts.notoSans(
-                                textStyle: const TextStyle(
-                                  color: CupertinoColors.systemGrey6,
-                                  fontSize: 18,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      3: Padding(
-                        padding: EdgeInsets.all(4),
-                        child: SizedBox(
-                          width: 60,
-                          child: Center(
-                            child: Text(
-                              "30분",
-                              style: GoogleFonts.notoSans(
-                                textStyle: const TextStyle(
-                                  color: CupertinoColors.systemGrey6,
-                                  fontSize: 18,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      4: Padding(
-                        padding: EdgeInsets.all(4),
-                        child: SizedBox(
-                          width: 60,
-                          child: Center(
-                            child: Text(
-                              "1시간",
-                              style: GoogleFonts.notoSans(
-                                textStyle: const TextStyle(
-                                  color: CupertinoColors.systemGrey6,
-                                  fontSize: 18,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
+                      0: _buildSegment("무한"),
+                      1: _buildSegment("5분"),
+                      2: _buildSegment("15분"),
+                      3: _buildSegment("30분"),
+                      4: _buildSegment("1시간"),
                     },
                     onValueChanged: (int value) {
                       setState(() {
-                        _selectedOption = value;
+                        _selectedOption1 = value;
                       });
                     },
                   ),
-
-                  SizedBox(height: 4),
-
-                  // 옵션 2
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        width: 200, // 🔥 텍스트 영역 크기 고정
-                        child: Text(
-                          '5분 평균 경험치 표시',
-                          style: GoogleFonts.notoSans(
-                            textStyle: const TextStyle(
-                              color: CupertinoColors.systemGrey6,
-                              fontSize: 18,
-                            ),
-                          ),
-                        ),
+                  const SizedBox(height: 8),
+                  // 평균 경험치 표시 옵션
+                  Text(
+                    "평균 경험치 표시",
+                    style: GoogleFonts.notoSans(
+                      textStyle: const TextStyle(
+                        color: CupertinoColors.systemGrey6,
+                        fontSize: 14,
                       ),
-                      CupertinoSwitch(
-                        value: option1,
-                        activeTrackColor: CupertinoColors.activeBlue,
-                        inactiveTrackColor: CupertinoColors.systemGrey,
-                        onChanged: (bool value) {
-                          setState(() {
-                            option1 = value;
-                          });
-                        },
-                      ),
-                    ],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  CupertinoSegmentedControl<int>(
+                    padding: const EdgeInsets.all(4),
+                    unselectedColor: CupertinoColors.darkBackgroundGray,
+                    groupValue: _selectedOption2,
+                    children: {
+                      0: _buildSegment("없음"),
+                      1: _buildSegment("5분"),
+                      2: _buildSegment("15분"),
+                      3: _buildSegment("30분"),
+                      4: _buildSegment("1시간"),
+                    },
+                    onValueChanged: (int value) {
+                      setState(() {
+                        _selectedOption2 = value;
+                      });
+                    },
                   ),
                 ],
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// CupertinoSegmentedControl에서 사용하는 개별 세그먼트 위젯 생성 메서드
+  Widget _buildSegment(String text) {
+    return Padding(
+      padding: const EdgeInsets.all(4),
+      child: SizedBox(
+        width: 60,
+        child: Center(
+          child: Text(
+            text,
+            style: GoogleFonts.notoSans(
+              textStyle: const TextStyle(
+                color: CupertinoColors.systemGrey6,
+                fontSize: 14,
+              ),
+            ),
+          ),
         ),
       ),
     );

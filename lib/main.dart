@@ -42,6 +42,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CupertinoApp(
+      debugShowCheckedModeBanner: false,
       theme: CupertinoThemeData(
         brightness: Brightness.light,
       ),

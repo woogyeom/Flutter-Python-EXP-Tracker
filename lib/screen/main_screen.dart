@@ -26,7 +26,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   ExpDataLoader expDataLoader = ExpDataLoader();
 
   bool isRunning = false;
-  bool isAverage = false;
+  Duration showAverageExp = Duration.zero;
   bool isServerRunning = false;
   bool isErrorShown = false;
   bool isRoiSet = false;
@@ -111,49 +111,55 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
 
-        setState(() {
-          int exp = data['exp'];
-          double percentage = data['percentage'];
-          int level = data['level'];
+        setState(
+          () {
+            int exp = data['exp'];
+            double percentage = data['percentage'];
+            int level = data['level'];
 
-          if (lastLevel == 0) {
-            lastLevel = level;
-            lastExp = exp;
-            lastPercentage = percentage;
-            return;
-          }
+            if (lastLevel == 0) {
+              lastLevel = level;
+              lastExp = exp;
+              lastPercentage = percentage;
+              return;
+            }
 
-          if (level != lastLevel &&
-              (level - lastLevel == 1 || level - lastLevel == 2)) {
-            int levelUpExp = expDataLoader.getExpForLevel(lastLevel);
+            if (level != lastLevel &&
+                (level - lastLevel == 1 || level - lastLevel == 2)) {
+              int levelUpExp = expDataLoader.getExpForLevel(lastLevel);
 
-            print("Level Up Detected!");
-            print("Previous Level: $lastLevel");
-            print("New Level: $level");
-            print("Last Exp: $lastExp");
-            print("Exp Required for Last Level: $levelUpExp");
-            print("Current Exp: $exp");
+              print("Level Up Detected!");
+              print("Previous Level: $lastLevel");
+              print("New Level: $level");
+              print("Last Exp: $lastExp");
+              print("Exp Required for Last Level: $levelUpExp");
+              print("Current Exp: $exp");
 
-            totalExp += (levelUpExp - lastExp);
-            totalPercentage += (100.0 - lastPercentage);
+              totalExp += (levelUpExp - lastExp);
+              totalPercentage += (100.0 - lastPercentage);
 
-            totalExp += exp;
-            totalPercentage += percentage;
+              totalExp += exp;
+              totalPercentage += percentage;
 
-            lastLevel = level;
-            lastExp = exp;
-            lastPercentage = percentage;
-          } else {
-            totalExp += (exp - lastExp);
-            totalPercentage += (percentage - lastPercentage);
+              lastLevel = level;
+              lastExp = exp;
+              lastPercentage = percentage;
+            } else {
+              totalExp += (exp - lastExp);
+              totalPercentage += (percentage - lastPercentage);
 
-            lastExp = exp;
-            lastPercentage = percentage;
-          }
-
-          averageExp = ((totalExp / _elapsedTime.inSeconds) * 300).floor();
-          averagePercentage = (totalPercentage / _elapsedTime.inSeconds) * 300;
-        });
+              lastExp = exp;
+              lastPercentage = percentage;
+            }
+            if (showAverageExp != Duration.zero) {
+              averageExp = ((totalExp / _elapsedTime.inSeconds) *
+                      showAverageExp.inSeconds)
+                  .floor();
+              averagePercentage = (totalPercentage / _elapsedTime.inSeconds) *
+                  showAverageExp.inSeconds;
+            }
+          },
+        );
       } else {
         throw Exception("Failed to fetch EXP data");
       }
@@ -224,7 +230,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
         pageBuilder: (context, animation, secondaryAnimation) => SettingsScreen(
           isRunning: isRunning,
           timerEndTime: timerEndTime,
-          isAverage: isAverage,
+          showAverageExp: showAverageExp,
         ),
         transitionDuration: Duration.zero,
         reverseTransitionDuration: Duration.zero,
@@ -234,7 +240,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     if (result != null) {
       setState(() {
         timerEndTime = result['timerEndTime'];
-        isAverage = result['isAverage'];
+        showAverageExp = result['showAverageExp'];
       });
     }
   }
@@ -412,7 +418,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                       ),
                     ),
                   ),
-                  if (isAverage)
+                  if (showAverageExp != Duration.zero)
                     Text(
                       '$averageExp [${averagePercentage.toStringAsFixed(2)}%]',
                       style: GoogleFonts.notoSans(
