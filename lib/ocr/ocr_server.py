@@ -41,6 +41,10 @@ class ROICoordinates(BaseModel):
     level: List[float]  # [x1, y1, x2, y2]
     exp: List[float]    # [x1, y1, x2, y2]
 
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
 @app.post("/set_roi")
 async def set_roi(roi: ROICoordinates):
     """Flutter에서 받은 ROI 데이터를 저장"""

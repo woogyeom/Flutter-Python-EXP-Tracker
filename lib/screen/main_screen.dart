@@ -30,6 +30,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   bool isServerRunning = false;
   bool isErrorShown = false;
   bool isRoiSet = false;
+  bool isConfigLoaded = false;
 
   String timerText = "00:00:00";
   Timer? _timer;
@@ -55,7 +56,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     super.initState();
     windowManager.addListener(this);
     expDataLoader.loadExpData();
-    _loadConfig(); // 파일에 저장된 설정 불러오기
+    _loadConfig();
   }
 
   @override
@@ -111,13 +112,21 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     }
   }
 
-  // 설정값을 JSON 파일에서 불러오기
   Future<void> _loadConfig() async {
     try {
       final file = await _getConfigFile();
       if (await file.exists()) {
         String content = await file.readAsString();
         Map<String, dynamic> config = jsonDecode(content);
+
+        // config가 비어있으면 추가 처리 없이 isConfigLoaded만 true로 설정하고 반환
+        if (config.isEmpty) {
+          print("Empty config, skipping further config load.");
+          setState(() {
+            isConfigLoaded = true;
+          });
+          return;
+        }
 
         setState(() {
           if (config["levelRect"] != null) {
@@ -128,7 +137,6 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
               rect["right"],
               rect["bottom"],
             );
-            isRoiSet = true;
           }
           if (config["expRect"] != null) {
             Map<String, dynamic> rect = config["expRect"];
@@ -143,10 +151,51 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
           showAverageExp = Duration(seconds: config["showAverageExp"]);
         });
         print("Config loaded: $config");
-        isRoiSet = true;
+
+        // levelRect와 expRect가 모두 설정되어 있을 때만 ROI 전송
+        if (levelRect != null && expRect != null) {
+          await waitForServerReady();
+          await sendROIToServer();
+          print("ROI Sent to Server");
+        } else {
+          print("No ROI data");
+        }
+
+        setState(() {
+          isConfigLoaded = true;
+        });
       }
     } catch (e) {
       print("Error loading config: $e");
+    }
+  }
+
+  Future<bool> checkServerReady() async {
+    try {
+      final response =
+          await http.get(Uri.parse("http://127.0.0.1:5000/health"));
+      if (response.statusCode == 200) {
+        return true;
+      }
+    } catch (e) {
+      // print("서버 준비 상태 확인 중 오류 발생: $e");
+    }
+    return false;
+  }
+
+  Future<void> waitForServerReady({int timeoutSeconds = 5}) async {
+    final startTime = DateTime.now();
+    while (true) {
+      if (await checkServerReady()) {
+        print("서버 준비 완료");
+        return;
+      }
+      // 타임아웃 처리 (예: 30초 후에도 준비 안되면 예외 발생)
+      if (DateTime.now().difference(startTime).inSeconds > timeoutSeconds) {
+        throw Exception("Timeout: 서버가 준비되지 않았습니다.");
+      }
+      // 재시도 간격 (여기서는 1초)
+      await Future.delayed(Duration(milliseconds: 500));
     }
   }
 
@@ -445,6 +494,9 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                           child: CupertinoButton(
                             padding: EdgeInsets.zero,
                             onPressed: () {
+                              if (!isConfigLoaded) {
+                                return;
+                              }
                               if (!isRoiSet) {
                                 _openRectSelectScreen();
                                 return;
@@ -466,17 +518,20 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                                         ? CupertinoColors.systemGreen
                                         : CupertinoColors.systemBlue,
                             borderRadius: BorderRadius.circular(12),
-                            child: Icon(
-                              !isRoiSet
-                                  ? CupertinoIcons.crop
-                                  : isRunning
-                                      ? CupertinoIcons.stop_fill
-                                      : _elapsedTime == Duration.zero
-                                          ? CupertinoIcons.play_arrow_solid
-                                          : CupertinoIcons.restart,
-                              color: CupertinoColors.white,
-                              size: 32,
-                            ),
+                            child: !isConfigLoaded
+                                ? const CupertinoActivityIndicator()
+                                : Icon(
+                                    !isRoiSet
+                                        ? CupertinoIcons.crop
+                                        : isRunning
+                                            ? CupertinoIcons.stop_fill
+                                            : _elapsedTime == Duration.zero
+                                                ? CupertinoIcons
+                                                    .play_arrow_solid
+                                                : CupertinoIcons.restart,
+                                    color: CupertinoColors.white,
+                                    size: 32,
+                                  ),
                           ),
                         ),
                         const SizedBox(width: 16),
