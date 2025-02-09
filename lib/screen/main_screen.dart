@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
+import 'package:intl/intl.dart';
 
 import 'package:flutter_exp_timer/exp_data_loader.dart';
 import 'package:flutter_exp_timer/screen/settings_screen.dart';
@@ -50,6 +51,8 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
 
   Rect? levelRect;
   Rect? expRect;
+
+  final numberFormat = NumberFormat("#,###");
 
   @override
   void initState() {
@@ -550,7 +553,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                   ),
                   // EXP 텍스트 영역
                   Text(
-                    '$totalExp [${totalPercentage.toStringAsFixed(2)}%]',
+                    '${numberFormat.format(totalExp)} [${totalPercentage.toStringAsFixed(2)}%]',
                     style: GoogleFonts.notoSans(
                       textStyle: const TextStyle(
                         color: CupertinoColors.systemYellow,
@@ -561,7 +564,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                   ),
                   if (showAverageExp != Duration.zero)
                     Text(
-                      '$averageExp [${averagePercentage.toStringAsFixed(2)}%]',
+                      '${numberFormat.format(averageExp)} [${averagePercentage.toStringAsFixed(2)}%]',
                       style: GoogleFonts.notoSans(
                         textStyle: const TextStyle(
                           color: CupertinoColors.systemYellow,
