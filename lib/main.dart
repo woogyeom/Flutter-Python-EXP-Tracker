@@ -5,7 +5,7 @@ import 'package:window_manager/window_manager.dart';
 import 'package:flutter_exp_timer/screen/main_screen.dart';
 import 'package:flutter_exp_timer/server_manager.dart'; // 서버 매니저 불러오기
 
-const String app_version = "1.1.3";
+const String app_version = "1.1.4";
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
