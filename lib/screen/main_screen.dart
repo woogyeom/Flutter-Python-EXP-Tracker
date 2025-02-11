@@ -417,9 +417,9 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   }
 
   @override
-  void onWindowClose() {
+  void onWindowClose() async {
     print("Closing app...");
-    widget.serverManager.shutdownServer(); // 서버 종료 후
+    await widget.serverManager.shutdownServer(); // 서버 종료 후
     windowManager.close(); // 앱 종료
   }
 

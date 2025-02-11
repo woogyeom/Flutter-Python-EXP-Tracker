@@ -27,19 +27,13 @@ class ServerManager {
     }
   }
 
-  // FastAPI 서버 종료 (PID 없이 프로세스 이름으로 종료)
-  void shutdownServer() {
+  // FastAPI 서버 종료 (정상 종료 엔드포인트 호출)
+  Future<void> shutdownServer() async {
     try {
-      print("Shutting down FastAPI server...");
-
-      // 🔹 실행된 프로세스를 이름으로 강제 종료
-      String processName = "ocr_server.exe"; // 기본 실행 파일
-
-      ProcessResult result =
-          Process.runSync("taskkill", ["/F", "/IM", processName]);
-
-      print("Taskkill result: ${result.stdout}");
-      print("All server processes killed successfully.");
+      print("Shutting down FastAPI server via shutdown endpoint...");
+      final response =
+          await http.get(Uri.parse('http://127.0.0.1:5000/shutdown'));
+      print("Shutdown response: ${response.body}");
     } catch (e) {
       print("Error shutting down the server: $e");
     }

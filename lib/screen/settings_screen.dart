@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:flutter_exp_timer/main.dart';
 
 class SettingsScreen extends StatefulWidget {
   final bool isRunning;
@@ -81,7 +82,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 Text(
-                  "Ver 1.1.2",
+                  app_version,
                   style: GoogleFonts.notoSans(
                     textStyle: const TextStyle(
                       color: CupertinoColors.systemGrey6,

@@ -1,4 +1,6 @@
 import sys
+import threading
+import time
 import cv2
 import pytesseract
 import numpy as np
@@ -21,7 +23,7 @@ roi_data = {"level": None, "exp": None}
 # 실행 파일 경로 설정 (PyInstaller 지원)
 if getattr(sys, 'frozen', False):
     base_path = sys._MEIPASS
-    debug_base_path = os.path.dirname(sys.executable)
+    debug_base_path = os.path.abspath(os.path.join(sys._MEIPASS, os.pardir))
 else:
     base_path = os.path.dirname(__file__)
     debug_base_path = base_path
@@ -98,7 +100,8 @@ def find_exp_and_lv():
     processed_exp = preprocess_roi(exp_roi)
     processed_lv = preprocess_roi(level_roi)
     
-    print("EXP 및 LV ROI 저장 완료!")
+    cv2.imwrite(os.path.join(debug_base_path, "exp_roi_debug.png"), processed_exp)
+    cv2.imwrite(os.path.join(debug_base_path, "level_roi_debug.png"), processed_lv)
 
     # OCR 설정 및 실행
     custom_config = r'--oem 3 --psm 7'
@@ -119,7 +122,7 @@ def find_exp_and_lv():
         exp_value = int(exp_match.group(1))
         exp_percentage = float(exp_match.group(2))
     else:
-        cv2.imwrite(os.path.join(debug_base_path, "exp_roi_debug.png"), processed_exp)
+        cv2.imwrite(os.path.join(debug_base_path, "exp_roi_debug_error.png"), processed_exp)
         raise HTTPException(status_code=400, detail=f"EXP 데이터 파싱 실패: '{extracted_exp_text_debug}'")
 
     # LV 데이터 파싱
@@ -128,7 +131,7 @@ def find_exp_and_lv():
     if lv_match:
         level = int(lv_match.group(0))
     else:
-        cv2.imwrite(os.path.join(debug_base_path, "level_roi_debug.png"), processed_lv)
+        cv2.imwrite(os.path.join(debug_base_path, "level_roi_debug_error.png"), processed_lv)
         raise HTTPException(status_code=400, detail=f"LV 데이터 파싱 실패: '{extracted_lv_text_debug}'")
 
     return exp_value, exp_percentage, level
@@ -159,6 +162,22 @@ async def extract_exp_and_level():
         # 일반적인 예외 발생 시 500 대신 400 반환
         print(f"데이터 추출 중 오류 발생: {e}")
         raise HTTPException(status_code=400, detail=f"EXP 또는 LV 데이터 추출 실패: {e}")
+    
+# 서버 종료 엔드포인트 추가 (정상 종료 유도)
+@app.get("/shutdown")
+async def shutdown():
+    """
+    서버를 정상적으로 종료하기 위한 엔드포인트.
+    응답을 반환한 후 별도의 스레드에서 약간의 지연 후 프로세스를 종료합니다.
+    """
+    def terminate():
+        # 약간의 지연 후 종료(응답 전송 완료 보장)
+        time.sleep(1)
+        print("서버를 종료합니다...")
+        os._exit(0)
+    
+    threading.Thread(target=terminate).start()
+    return {"message": "Server is shutting down gracefully."}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=5000, log_level="info", log_config=None)
