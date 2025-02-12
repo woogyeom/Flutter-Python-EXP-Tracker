@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -169,6 +170,38 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
         });
       }
     } catch (e) {
+      showCupertinoDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return CupertinoAlertDialog(
+            content: Text(
+              "서버와 연결 실패",
+              style: GoogleFonts.notoSans(
+                textStyle: const TextStyle(
+                  color: CupertinoColors.black,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            actions: [
+              CupertinoDialogAction(
+                child: Text(
+                  "확인",
+                  style: GoogleFonts.notoSans(
+                    textStyle: const TextStyle(
+                      color: CupertinoColors.black,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          );
+        },
+      );
       print("Error loading config: $e");
     }
   }
@@ -186,18 +219,18 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     return false;
   }
 
-  Future<void> waitForServerReady({int timeoutSeconds = 5}) async {
+  Future<void> waitForServerReady({int timeoutSeconds = 30}) async {
     final startTime = DateTime.now();
     while (true) {
       if (await checkServerReady()) {
         print("서버 준비 완료");
         return;
       }
-      // 타임아웃 처리 (예: 30초 후에도 준비 안되면 예외 발생)
+      // 타임아웃 처리
       if (DateTime.now().difference(startTime).inSeconds > timeoutSeconds) {
         throw Exception("Timeout: 서버가 준비되지 않았습니다.");
       }
-      // 재시도 간격 (여기서는 1초)
+      // 재시도 간격
       await Future.delayed(Duration(milliseconds: 500));
     }
   }

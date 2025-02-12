@@ -1,0 +1,26 @@
+2025-02-12 03:26:57,131 - INFO - Base path: c:\Users\Woogyeom Sim\Documents\GitHub\Flutter-Python-EXP-Tracker\lib\ocr
+2025-02-12 03:26:57,132 - INFO - Tesseract Path: c:\Users\Woogyeom Sim\Documents\GitHub\Flutter-Python-EXP-Tracker\lib\ocr\Tesseract-OCR\tesseract.exe
+2025-02-12 03:26:57,225 - INFO - 서버 시작
+2025-02-12 03:27:14,265 - INFO - 서버 종료 명령 수신, 종료 절차 진행 (graceful shutdown)
+2025-02-12 03:27:14,311 - INFO - 서버 종료 명령 수신, 종료 절차 진행 (graceful shutdown)
+2025-02-12 03:27:14,449 - INFO - 서버 종료 중: 로그 파일 저장 완료
+2025-02-12 03:27:14,450 - INFO - 서버 종료 작업 완료
+2025-02-12 03:28:23,088 - INFO - Base path: c:\Users\Woogyeom Sim\Documents\GitHub\Flutter-Python-EXP-Tracker\lib\ocr
+2025-02-12 03:28:23,089 - INFO - Tesseract Path: c:\Users\Woogyeom Sim\Documents\GitHub\Flutter-Python-EXP-Tracker\lib\ocr\Tesseract-OCR\tesseract.exe
+2025-02-12 03:28:23,139 - INFO - 서버 시작
+2025-02-12 03:28:35,412 - INFO - ROI 데이터 저장됨: Level=[3508.0, 1369.0, 3587.0, 1427.0], EXP=[4309.0, 1360.0, 4556.0, 1431.0]
+2025-02-12 03:32:23,183 - INFO - 서버 종료 명령 수신, 종료 절차 진행 (graceful shutdown)
+2025-02-12 03:32:23,223 - INFO - 서버 종료 명령 수신, 종료 절차 진행 (graceful shutdown)
+2025-02-12 03:32:23,398 - INFO - 서버 종료 중: 로그 파일 저장 완료
+2025-02-12 03:32:23,398 - INFO - 서버 종료 작업 완료
+2025-02-12 03:45:35,335 - INFO - Base path: c:\Users\Woogyeom Sim\Documents\GitHub\Flutter-Python-EXP-Tracker\lib\ocr
+2025-02-12 03:45:35,335 - INFO - Tesseract Path: c:\Users\Woogyeom Sim\Documents\GitHub\Flutter-Python-EXP-Tracker\lib\ocr\Tesseract-OCR\tesseract.exe
+2025-02-12 03:45:35,390 - INFO - 서버 시작
+2025-02-12 03:45:48,833 - INFO - 서버 종료 중: 로그 파일 저장 완료
+2025-02-12 03:45:48,834 - INFO - 서버 종료 작업 완료
+2025-02-12 03:45:59,094 - INFO - Base path: c:\Users\Woogyeom Sim\Documents\GitHub\Flutter-Python-EXP-Tracker\lib\ocr
+2025-02-12 03:45:59,094 - INFO - Tesseract Path: c:\Users\Woogyeom Sim\Documents\GitHub\Flutter-Python-EXP-Tracker\lib\ocr\Tesseract-OCR\tesseract.exe
+2025-02-12 03:45:59,143 - INFO - 서버 시작
+2025-02-12 03:46:12,791 - INFO - ROI 데이터 저장됨: Level=[3508.0, 1369.0, 3587.0, 1427.0], EXP=[4309.0, 1360.0, 4556.0, 1431.0]
+2025-02-12 03:46:13,286 - INFO - 서버 종료 중: 로그 파일 저장 완료
+2025-02-12 03:46:13,286 - INFO - 서버 종료 작업 완료
