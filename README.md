@@ -29,6 +29,8 @@
 - [google_fonts](https://pub.dev/packages/google_fonts): 다양한 글꼴 스타일로 텍스트 표시.
 - [http](https://pub.dev/packages/http): 서버와의 데이터 통신을 처리.
 - [url_launcher](https://pub.dev/packages/url_launcher): 외부 URL 열기 기능 제공.
+- [intl](https://pub.dev/packages/intl): 숫자의 형식을 국제화된 방식으로 포맷.
+- [audioplayers](https://pub.dev/packages/audioplayers): 오디오 파일을 재생할 수 있는 기능 제공.
 
 **Python**:
 - [FastAPI](https://fastapi.tiangolo.com/): 고성능 비동기 웹 프레임워크로, API 서버 및 OCR 데이터 제공.
