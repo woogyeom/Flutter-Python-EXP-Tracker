@@ -84,7 +84,6 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
   Future<void> _closeSettings() async {
     final selectedDuration1 = _durationFromSelectedOption(_selectedOption1);
     final selectedDuration2 = _durationFromSelectedOption(_selectedOption2);
-    print(showMeso);
     Navigator.pop(context, {
       'timerEndTime': selectedDuration1,
       'showAverage': selectedDuration2,

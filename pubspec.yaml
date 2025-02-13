@@ -69,6 +69,7 @@ flutter:
     - assets/level_up_exp.json
     - assets/level_rect_sample.png
     - assets/exp_rect_sample.png
+    - assets/meso_rect_sample.png
     - assets/timer_alarm.mp3
     - assets/meso.png
   #   - images/a_dot_ham.jpeg

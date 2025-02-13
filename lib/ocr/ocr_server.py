@@ -13,7 +13,7 @@ import re
 import zipfile
 import logging
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 from contextlib import asynccontextmanager
 import asyncio
 
@@ -53,7 +53,7 @@ else:
 class ROICoordinates(BaseModel):
     level: List[float]  # [x1, y1, x2, y2]
     exp: List[float]    # [x1, y1, x2, y2]
-    meso: List[float]
+    meso: Optional[List[float]] = None
 
 # Lifespan 컨텍스트 매니저를 활용한 시작/종료 작업 처리
 @asynccontextmanager
@@ -89,10 +89,10 @@ async def set_roi(roi: ROICoordinates):
     }
     if roi.meso is not None:
         roi_data["meso"] = roi.meso
-        logger.info(f"ROI 데이터 저장됨: Level={roi.level}, EXP={roi.exp}, MESO={roi.meso}")
+        logger.info(f"ROI 데이터 수신 (메소 포함): Level={roi.level}, EXP={roi.exp}, MESO={roi.meso}")
         response_data["meso"] = roi.meso
     else:
-        logger.info(f"ROI 데이터 저장됨: Level={roi.level}, EXP={roi.exp}")
+        logger.info(f"ROI 데이터 수신: Level={roi.level}, EXP={roi.exp}")
     return response_data
 
 def capture_roi_with_mss(x1, y1, x2, y2):

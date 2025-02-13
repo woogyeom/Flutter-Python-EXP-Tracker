@@ -1,6 +1,7 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_exp_timer/log.dart';
 import 'package:flutter_exp_timer/main.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -78,7 +79,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
 
   @override
   void dispose() {
-    print('dispose');
+    log('dispose');
     windowManager.removeListener(this);
     super.dispose();
   }
@@ -87,11 +88,6 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   void _refreshUI(VoidCallback updateFn) {
     setState(() {
       updateFn();
-      if (showMeso) {
-        windowManager.setSize(Size(appSize.width, 250));
-      } else {
-        windowManager.setSize(appSize);
-      }
       // _elapsedTime로부터 timerText를 갱신
       timerText = _formatDuration(_elapsedTime);
       // 평균 EXP/Percentage 계산 (경과 시간이 있을 때)
@@ -154,13 +150,13 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
       "timerEndTime": timerEndTime.inSeconds,
       "volume": _audioPlayer.volume,
       "showAverage": showAverage.inSeconds,
-      "showMeso": showMeso,
+      // "showMeso": showMeso,
     };
     try {
       await file.writeAsString(jsonEncode(config));
-      print("Config saved: ${jsonEncode(config)}");
+      // log("Config saved: ${jsonEncode(config)}");
     } catch (e) {
-      print("Error saving config: $e");
+      log("Error saving config: $e");
     }
   }
 
@@ -173,7 +169,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
 
         // config가 비어있으면 추가 처리 없이 isConfigLoaded만 true로 설정하고 반환
         if (config.isEmpty) {
-          print("Empty config, skipping further config load.");
+          log("Empty config, skipping further config load.");
           _refreshUI(() {
             isConfigLoaded = true;
           });
@@ -211,19 +207,19 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
           timerEndTime = Duration(seconds: config["timerEndTime"]);
           _audioPlayer.setVolume(config["volume"]);
           showAverage = Duration(seconds: config["showAverage"]);
-          showMeso = config["showMeso"];
-          if (showMeso) windowManager.setSize(Size(appSize.width, 250));
+          // showMeso = config["showMeso"];
+          // if (showMeso) windowManager.setSize(Size(appSize.width, 250));
           isConfigLoaded = true;
         });
-        print("Config loaded: $config");
+        log("Config loaded: $config");
 
         // levelRect와 expRect가 모두 설정되어 있을 때만 ROI 전송
         if (levelRect != null && expRect != null) {
           await waitForServerReady();
           await sendROIToServer();
-          print("ROI Sent to Server");
+          log("ROI Sent to Server");
         } else {
-          print("No ROI data");
+          log("No ROI data");
         }
       }
     } catch (e) {
@@ -259,7 +255,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
           );
         },
       );
-      print("Error loading config: $e");
+      log("Error loading config: $e");
     }
   }
 
@@ -271,7 +267,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
         return true;
       }
     } catch (e) {
-      // print("서버 준비 상태 확인 중 오류 발생: $e");
+      // log("서버 준비 상태 확인 중 오류 발생: $e");
     }
     return false;
   }
@@ -280,7 +276,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     final startTime = DateTime.now();
     while (true) {
       if (await checkServerReady()) {
-        print("서버 준비 완료");
+        log("서버 준비 완료");
         return;
       }
       // 타임아웃 처리
@@ -294,7 +290,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
 
   Future<void> sendROIToServer() async {
     if (levelRect == null || expRect == null) {
-      print("ROI 데이터가 설정되지 않았습니다.");
+      log("ROI 데이터가 설정되지 않았습니다.");
       return;
     }
 
@@ -332,12 +328,12 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
         _refreshUI(() {
           isRoiSet = true;
         });
-        print("ROI 데이터 성공적으로 서버에 전송됨: ${response.body}");
+        log("ROI 데이터 성공적으로 서버에 전송됨: ${response.body}");
       } else {
-        print("서버 오류: ${response.statusCode} - ${response.body}");
+        log("서버 오류: ${response.statusCode} - ${response.body}");
       }
     } catch (e) {
-      print("ROI 전송 중 오류 발생: $e");
+      log("ROI 전송 중 오류 발생: $e");
     }
   }
 
@@ -359,13 +355,14 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
             initialLevel = level;
             initialExp = exp; // 최초 경험치를 기준값으로 설정
             initialPercentage = percentage;
+            log("초기값: initialExp=$initialExp, initialPercentage=$initialPercentage, initialLevel=$initialLevel | ");
             return;
           }
 
           // 레벨업 감지
           if (level > lastLevel &&
               ((level - lastLevel) == 1 || (level - lastLevel) == 2)) {
-            print("Level Up Detected!");
+            log("Level Up Detected!");
             int levelUpExp = expDataLoader.getExpForLevel(lastLevel);
 
             expBeforeLevelUp = levelUpExp - lastExp + totalExp;
@@ -373,6 +370,8 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
             initialExp = 0; // 레벨업 후 새로운 기준값 설정
             initialPercentage = 0.00;
             lastLevel = level;
+            log("초기값: initialExp=$initialExp, initialPercentage=$initialPercentage, initialLevel=$initialLevel | ");
+            log("레벨업 전: expBeforeLevelUp=$expBeforeLevelUp, percentageBeforeLevelUp=$percentageBeforeLevelUp");
           }
 
           // 경험치 증가량을 계산
@@ -384,42 +383,18 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
           lastPercentage = percentage;
           lastLevel = level;
 
-          // print("===== Debug Info =====");
-          // print("Initial Values:");
-          // print("  initialExp: $initialExp");
-          // print("  initialPercentage: $initialPercentage");
-          // print("  initialLevel: $initialLevel");
-          // print("  initialMeso: $initialMeso");
-
-          // print("Last Values:");
-          // print("  lastExp: $lastExp");
-          // print("  lastPercentage: $lastPercentage");
-          // print("  lastLevel: $lastLevel");
-
-          // print("Total Accumulated:");
-          // print("  totalExp: $totalExp");
-          // print("  totalPercentage: $totalPercentage");
-          // print("  totalMeso: $totalMeso");
-
-          // print("Averages:");
-          // print("  averageExp: $averageExp");
-          // print("  averagePercentage: $averagePercentage");
-          // print("  averageMeso: $averageMeso");
-
-          // print("Before Level Up:");
-          // print("  expBeforeLevelUp: $expBeforeLevelUp");
-          // print("  percentageBeforeLevelUp: $percentageBeforeLevelUp");
-          // print("=======================");
+          log("최근값: lastExp=$lastExp, lastPercentage=$lastPercentage, lastLevel=$lastLevel | "
+              "누적값: totalExp=$totalExp, totalPercentage=$totalPercentage | ");
         });
       } else {
         throw Exception("Failed to fetch EXP data");
       }
     } catch (e) {
-      print("[Server] Error fetching EXP data: $e");
+      log("[Server] Error fetching EXP data: $e");
     }
   }
 
-  // FastAPI에서 메소소 데이터 가져오기
+  // FastAPI에서 메소 데이터 가져오기
   Future<void> fetchAndDisplayMesoData() async {
     try {
       final response =
@@ -432,16 +407,19 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
         _refreshUI(() {
           if (initialMeso == 0) {
             initialMeso = meso; // 타이머 시작 시 초기값 설정
+            log("  초기 메소: $initialMeso");
             return;
           }
 
           totalMeso = meso - initialMeso; // 초기값과 비교하여 증가량 계산
         });
+
+        log("  누적 메소: $totalMeso");
       } else {
         throw Exception("Failed to fetch Meso data");
       }
     } catch (e) {
-      print("[Server] Error fetching Meso data: $e");
+      log("[Server] Error fetching Meso data: $e");
     }
   }
 
@@ -531,8 +509,6 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
         showMeso = result['showMeso'];
       });
       _saveConfig(); // 변경된 설정 저장
-      fetchAndDisplayExpData();
-      fetchAndDisplayMesoData();
     }
   }
 
@@ -552,6 +528,9 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
       _refreshUI(() {
         levelRect = result['level'];
         expRect = result['exp'];
+      });
+      setState(() {
+        isRoiSet = true;
       });
       _saveConfig(); // ROI 정보 저장
       sendROIToServer();
@@ -594,7 +573,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
 
   @override
   void onWindowClose() async {
-    print("Closing app...");
+    log("Closing app...");
     await widget.serverManager.shutdownServer(); // 서버 종료 후
     windowManager.close(); // 앱 종료
   }
@@ -637,6 +616,13 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                               showMeso = value;
                             });
                             _saveConfig();
+                            setState(() {
+                              if (showMeso) {
+                                windowManager.setSize(Size(appSize.width, 250));
+                              } else {
+                                windowManager.setSize(appSize);
+                              }
+                            });
                             if (value) {
                               await _openMesoRectSelectScreen();
                             }

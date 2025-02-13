@@ -242,14 +242,14 @@ class _RectSelectScreenState extends State<RectSelectScreen> {
                         ),
                         SizedBox(height: 8),
                         Image.asset(widget.isMeso
-                            ? 'assets/exp_rect_sample.png'
+                            ? 'assets/meso_rect_sample.png'
                             : (selectionStep == 0
                                 ? 'assets/level_rect_sample.png'
                                 : 'assets/exp_rect_sample.png')),
                         SizedBox(height: 8),
                         Text(
                           widget.isMeso
-                              ? "메소 ROI 선택 (옵션)"
+                              ? "메소 칸이 모두 포함되게"
                               : (selectionStep == 0 ? "숫자만 포함되게" : "경험치 바까지"),
                           style: TextStyle(
                             color: CupertinoColors.systemYellow,
