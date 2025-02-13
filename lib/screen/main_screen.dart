@@ -110,6 +110,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
             }
           : null,
       "timerEndTime": timerEndTime.inSeconds,
+      "volume": _audioPlayer.volume,
       "showAverageExp": showAverageExp.inSeconds,
     };
     try {
@@ -156,6 +157,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
             );
           }
           timerEndTime = Duration(seconds: config["timerEndTime"]);
+          _audioPlayer.setVolume(config["volume"]);
           showAverageExp = Duration(seconds: config["showAverageExp"]);
         });
         print("Config loaded: $config");
