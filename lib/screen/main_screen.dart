@@ -195,6 +195,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
               rect["bottom"],
             );
           }
+          // Optional: mesoRect이 없으면 그냥 null 유지
           // if (config["mesoRect"] != null) {
           //   Map<String, dynamic> rect = config["mesoRect"];
           //   mesoRect = Rect.fromLTRB(
@@ -204,11 +205,12 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
           //     rect["bottom"],
           //   );
           // }
-          timerEndTime = Duration(seconds: config["timerEndTime"]);
-          _audioPlayer.setVolume(config["volume"]);
-          showAverage = Duration(seconds: config["showAverage"]);
-          // showMeso = config["showMeso"];
-          // if (showMeso) windowManager.setSize(Size(appSize.width, 250));
+          // 필드가 없으면 기본값 사용
+          timerEndTime = Duration(seconds: config["timerEndTime"] ?? 0);
+          _audioPlayer.setVolume(config["volume"] ?? 0.5);
+          showAverage = Duration(seconds: config["showAverage"] ?? 0);
+          // Optional: showMeso 기본값은 false
+          // showMeso = config["showMeso"] ?? false;
           isConfigLoaded = true;
         });
         safeLog("Config loaded: $config");
@@ -387,7 +389,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
           lastLevel = level;
 
           safeLog(
-              "최근값: lastExp=$lastExp, lastPercentage=$lastPercentage, lastLevel=$lastLevel | 누적값: totalExp=$totalExp, totalPercentage=$totalPercentage | ");
+              "최근값: lastExp=$lastExp, lastPercentage=$lastPercentage, lastLevel=$lastLevel | 누적값: totalExp=$totalExp, totalPercentage=${totalPercentage.toStringAsFixed(2)} | ");
         });
       } else {
         throw Exception("Failed to fetch EXP data");

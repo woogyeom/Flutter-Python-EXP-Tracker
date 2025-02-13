@@ -12,6 +12,7 @@ import os
 import re
 import zipfile
 import logging
+from logging.handlers import TimedRotatingFileHandler
 from pydantic import BaseModel
 from typing import List, Optional
 from contextlib import asynccontextmanager
@@ -24,15 +25,19 @@ else:
     base_path = os.path.dirname(__file__)
     debug_base_path = base_path
 
-# 로거 설정
+# 로거 설정 (하루마다 회전하며 최근 3일치 로그 보관)
 logger = logging.getLogger("my_logger")
 logger.setLevel(logging.DEBUG)
 console_handler = logging.StreamHandler()
 
-# debug_base_path를 사용해 절대 경로 지정
 log_file_path = os.path.join(debug_base_path, "server_log.txt")
-file_handler = logging.FileHandler(log_file_path, encoding="utf-8")
-
+file_handler = TimedRotatingFileHandler(
+    log_file_path,
+    when="D",          # 일 단위 회전
+    interval=1,        # 1일마다 회전
+    backupCount=3,     # 최근 3일치 로그만 보관
+    encoding="utf-8"
+)
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 console_handler.setFormatter(formatter)
 file_handler.setFormatter(formatter)
@@ -60,7 +65,6 @@ class ROICoordinates(BaseModel):
 async def lifespan(app: FastAPI):
     logger.info("서버 시작")
     yield
-    # 서버 종료 시 실행할 작업
     logger.info("서버 종료 중: 로그 파일 저장 완료")
     if os.path.exists("server_logs.txt"):
         logger.info("로그 파일이 저장되었습니다: server_logs.txt")
@@ -114,7 +118,7 @@ def preprocess_roi(roi):
     return cv2.GaussianBlur(resized, (3, 3), 0)
 
 def find_exp_and_lv():
-    logger.info("ROI에서 EXP 및 LV 데이터 추출 시작...")
+    # logger.info("ROI에서 EXP 및 LV 데이터 추출 시작...")
     if not roi_data["level"] or not roi_data["exp"]:
         raise HTTPException(status_code=400, detail="ROI가 설정되지 않았습니다.")
     
@@ -134,8 +138,8 @@ def find_exp_and_lv():
     extracted_exp_text_debug = pytesseract.image_to_string(processed_exp, lang='digits', config=custom_config)
     extracted_lv_text_debug = pytesseract.image_to_string(processed_lv, lang='digits', config=custom_config)
     
-    logger.info(f"추출된 경험치 텍스트: {extracted_exp_text_debug}")
-    logger.info(f"추출된 레벨 텍스트: {extracted_lv_text_debug}")
+    logger.info(f"추출된 경험치 텍스트: {extracted_exp_text_debug.strip()}")
+    logger.info(f"추출된 레벨 텍스트: {extracted_lv_text_debug.strip()}")
     
     extracted_exp_text_debug = extracted_exp_text_debug.encode("utf-8", errors="ignore").decode("utf-8")
     extracted_lv_text_debug = extracted_lv_text_debug.encode("utf-8", errors="ignore").decode("utf-8")
@@ -160,7 +164,7 @@ def find_exp_and_lv():
     return exp_value, exp_percentage, level
 
 def find_meso():
-    logger.info("ROI에서 메소 데이터 추출 시작...")
+    # logger.info("ROI에서 메소 데이터 추출 시작...")
     if not roi_data["meso"]:
         raise HTTPException(status_code=400, detail="ROI가 설정되지 않았습니다.")
     
@@ -175,12 +179,12 @@ def find_meso():
     custom_config = r'--oem 3 --psm 7'
     extracted_meso_text_debug = pytesseract.image_to_string(processed_meso, lang='digits', config=custom_config)
 
-    logger.info(f"추출된 메소 텍스트: {extracted_meso_text_debug}")
+    logger.info(f"추출된 메소 텍스트: {extracted_meso_text_debug.strip()}")
     
     extracted_meso_text_debug = extracted_meso_text_debug.encode("utf-8", errors="ignore").decode("utf-8")
     
-    extracted_meso_text = re.sub(r"[^\d]", "", extracted_meso_text_debug)  # 숫자만 남기고 제거
-    meso_match = re.search(r"\d+", extracted_meso_text)  # 순수 숫자만 추출
+    extracted_meso_text = re.sub(r"[^\d]", "", extracted_meso_text_debug)
+    meso_match = re.search(r"\d+", extracted_meso_text)
     if meso_match:
         meso = int(meso_match.group(0))
     else:
@@ -191,7 +195,7 @@ def find_meso():
 
 @app.get("/extract_exp_and_level")
 async def extract_exp_and_level():
-    logger.info("ROI에서 EXP 및 LV 데이터 추출 요청 수신")
+    # logger.info("ROI에서 EXP 및 LV 데이터 추출 요청 수신")
     if not roi_data["level"] or not roi_data["exp"]:
         raise HTTPException(status_code=400, detail="ROI가 설정되지 않았습니다.")
     try:
@@ -208,7 +212,7 @@ async def extract_exp_and_level():
     
 @app.get("/extract_meso")
 async def extract_meso():
-    logger.info("ROI에서 메소 데이터 추출 요청 수신")
+    # logger.info("ROI에서 메소 데이터 추출 요청 수신")
     if not roi_data["meso"]:
         raise HTTPException(status_code=400, detail="ROI가 설정되지 않았습니다.")
     try:
@@ -227,7 +231,6 @@ async def extract_meso():
 async def root():
     return {"message": "Server is running"}
 
-
 @app.get("/shutdown")
 async def shutdown():
     """
@@ -235,15 +238,13 @@ async def shutdown():
     graceful shutdown을 유도합니다.
     """
     logger.info("서버 종료 명령 수신, 종료 절차 진행 (graceful shutdown)")
-    # app.state.server는 uvicorn.Server 인스턴스를 가리킵니다.
     app.state.server.should_exit = True
     return {"message": "Server is shutting down gracefully."}
 
-# uvicorn.Server를 직접 사용하여 앱 실행
 if __name__ == "__main__":
     from uvicorn import Config, Server
     config = Config(app, host="127.0.0.1", port=1108, log_level="info", lifespan="on")
     server = Server(config)
-    # 앱 상태에 서버 인스턴스를 저장해서 shutdown 엔드포인트에서 참조할 수 있게 함
+    # shutdown 엔드포인트에서 서버 인스턴스를 참조할 수 있도록 app.state에 저장
     app.state.server = server
     server.run()
