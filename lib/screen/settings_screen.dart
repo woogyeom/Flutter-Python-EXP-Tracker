@@ -111,6 +111,9 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
                 const SizedBox(width: 18),
               ],
             ),
+            SizedBox(
+              height: 4,
+            ),
             // 옵션 영역
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 48),
@@ -170,7 +173,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
                       });
                     },
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 8),
                   // 평균 경험치 표시 옵션
                   Text(
                     "평균 경험치 표시",
