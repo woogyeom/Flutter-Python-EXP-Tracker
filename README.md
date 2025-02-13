@@ -29,6 +29,8 @@
 - [google_fonts](https://pub.dev/packages/google_fonts): 다양한 글꼴 스타일로 텍스트 표시.
 - [http](https://pub.dev/packages/http): 서버와의 데이터 통신을 처리.
 - [url_launcher](https://pub.dev/packages/url_launcher): 외부 URL 열기 기능 제공.
+- [intl](https://pub.dev/packages/intl): 숫자의 형식을 국제화된 방식으로 포맷.
+- [audioplayers](https://pub.dev/packages/audioplayers): 오디오 파일을 재생할 수 있는 기능 제공.
 
 **Python**:
 - [FastAPI](https://fastapi.tiangolo.com/): 고성능 비동기 웹 프레임워크로, API 서버 및 OCR 데이터 제공.
@@ -78,7 +80,7 @@
 
 https://l.linklyhq.com/l/23vxv
 
-**현재 버전 1.1.5**
+**현재 버전 1.2.0**
 
 ---
 
@@ -100,13 +102,14 @@ https://open.kakao.com/o/sm79OLeh
 + Ver 1.1.3: 임시 폴더 경로 지정 추가 (한글 사용자명 환경에서도 정상 동작하도록 명시적 지정)
 + Ver 1.1.4: 임시 폴더 내에 서버 로그 저장 추가
 + Ver 1.1.5: 서버 준비 확인 시 타임아웃 시간 연장하여 안정성 개선, 타임아웃 시 오류 알림 표시
++ Ver 1.2.0: 타이머 시간 만료 정지 시 알람 소리 추가, 볼륨 설정 옵션 추가
 
 ---
 
 ## 업데이트 예정
 
-+ 타이머 시간 완료 시 어떠한 형태로 사용자에게 알림 추가
 + 인벤토리 메소 영역을 추가 지정해 메소 획득량도 측정하는 옵션 추가
++ 맥os 지원
 
 ---
 
