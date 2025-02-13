@@ -1,3 +1,4 @@
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
@@ -26,6 +27,7 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> with WindowListener {
   ExpDataLoader expDataLoader = ExpDataLoader();
+  final AudioPlayer _audioPlayer = AudioPlayer();
 
   bool isRunning = false;
   Duration showAverageExp = Duration.zero;
@@ -61,6 +63,8 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     windowManager.addListener(this);
     expDataLoader.loadExpData();
     _loadConfig();
+
+    _audioPlayer.setVolume(0.5);
   }
 
   @override
@@ -352,6 +356,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
       fetchAndDisplayExpData();
 
       if (timerEndTime != Duration.zero && _elapsedTime >= timerEndTime) {
+        _audioPlayer.play(AssetSource('timer_alarm.mp3'));
         _stopTimer();
       }
     });
@@ -400,6 +405,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
           isRunning: isRunning,
           timerEndTime: timerEndTime,
           showAverageExp: showAverageExp,
+          audioPlayer: _audioPlayer,
         ),
         transitionDuration: Duration.zero,
         reverseTransitionDuration: Duration.zero,
