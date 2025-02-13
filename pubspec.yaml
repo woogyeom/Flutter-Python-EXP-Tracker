@@ -36,6 +36,7 @@ dependencies:
   url_launcher: ^6.3.1
   intl: ^0.20.2
   audioplayers: ^6.1.2
+  auto_size_text: ^3.0.0
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
@@ -69,6 +70,7 @@ flutter:
     - assets/level_rect_sample.png
     - assets/exp_rect_sample.png
     - assets/timer_alarm.mp3
+    - assets/meso.png
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see

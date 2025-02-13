@@ -8,15 +8,17 @@ import 'package:flutter_exp_timer/main.dart';
 class SettingsScreen extends StatefulWidget {
   final bool isRunning;
   final Duration timerEndTime;
-  final Duration showAverageExp;
+  final Duration showAverage;
   final AudioPlayer audioPlayer;
+  final bool showMeso;
 
   const SettingsScreen({
     Key? key,
     required this.isRunning,
     required this.timerEndTime,
-    required this.showAverageExp,
+    required this.showAverage,
     required this.audioPlayer,
+    required this.showMeso,
   }) : super(key: key);
 
   @override
@@ -28,14 +30,28 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
   int _selectedOption2 = 0;
   double currentVolume = 0.5;
   late AudioPlayer _audioPlayer;
+  bool showMeso = false;
 
   @override
   void initState() {
-    super.initState();
     _selectedOption1 = _getSelectedOptionFromDuration(widget.timerEndTime);
-    _selectedOption2 = _getSelectedOptionFromDuration(widget.showAverageExp);
+    _selectedOption2 = _getSelectedOptionFromDuration(widget.showAverage);
     _audioPlayer = widget.audioPlayer;
     currentVolume = _audioPlayer.volume;
+    showMeso = widget.showMeso;
+
+    windowManager.setSize(Size(appSize.width, 200));
+
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    // SettingsScreen 나갈 때 원래 창 크기로 복원
+    if (showMeso) windowManager.setSize(Size(appSize.width, 250));
+    if (!showMeso) windowManager.setSize(appSize);
+    windowManager.removeListener(this);
+    super.dispose();
   }
 
   /// Duration 값을 각 옵션에 해당하는 정수로 변환합니다.
@@ -68,9 +84,11 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
   Future<void> _closeSettings() async {
     final selectedDuration1 = _durationFromSelectedOption(_selectedOption1);
     final selectedDuration2 = _durationFromSelectedOption(_selectedOption2);
+    print(showMeso);
     Navigator.pop(context, {
       'timerEndTime': selectedDuration1,
-      'showAverageExp': selectedDuration2,
+      'showAverage': selectedDuration2,
+      'showMeso': showMeso,
     });
   }
 
@@ -82,7 +100,6 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
           : CupertinoColors.darkBackgroundGray,
       child: DragToMoveArea(
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 14),
@@ -99,9 +116,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
                     ),
                   ),
                 ),
-                SizedBox(
-                  width: 8,
-                ),
+                const SizedBox(width: 8),
                 PressableIcon(
                   icon: CupertinoIcons.arrow_uturn_left_circle_fill,
                   color: CupertinoColors.systemRed,
@@ -111,98 +126,95 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
                 const SizedBox(width: 18),
               ],
             ),
-            SizedBox(
-              height: 4,
-            ),
-            // 옵션 영역
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 48),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 타이머 시간 옵션
-                  Row(
-                    children: [
-                      Text(
-                        "타이머 자동 정지",
-                        style: GoogleFonts.notoSans(
-                          textStyle: const TextStyle(
-                            color: CupertinoColors.systemGrey6,
-                            fontSize: 14,
+            const SizedBox(height: 4),
+            // 상단 버튼 영역을 제외한 나머지 공간을 Options 영역이 차지하도록 Expanded 사용
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 48),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 타이머 시간 옵션
+                    Row(
+                      children: [
+                        Text(
+                          "타이머 자동 정지",
+                          style: GoogleFonts.notoSans(
+                            textStyle: const TextStyle(
+                              color: CupertinoColors.systemGrey6,
+                              fontSize: 14,
+                            ),
                           ),
                         ),
-                      ),
-                      SizedBox(
-                        width: 8,
-                      ),
-                      Material(
-                        type: MaterialType
-                            .transparency, // 투명한 Material로 감싸서 Cupertino 스타일과 맞출 수 있음
-                        child: CustomCupertinoSlider(
-                          value: currentVolume,
-                          divisions: 10,
-                          thumbRadius: 6.0, // 원하는 thumb 크기로 조절
-                          onChanged: (double value) async {
-                            setState(() {
-                              currentVolume = value;
-                            });
-                            await _audioPlayer.setVolume(currentVolume);
-                          },
-                          audioPlayer: _audioPlayer,
+                        const SizedBox(width: 8),
+                        Material(
+                          type: MaterialType.transparency,
+                          child: CustomCupertinoSlider(
+                            value: currentVolume,
+                            divisions: 10,
+                            thumbRadius: 6.0,
+                            onChanged: (double value) async {
+                              setState(() {
+                                currentVolume = value;
+                              });
+                              await _audioPlayer.setVolume(currentVolume);
+                            },
+                            audioPlayer: _audioPlayer,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    CupertinoSegmentedControl<int>(
+                      padding: const EdgeInsets.all(4),
+                      unselectedColor: CupertinoColors.darkBackgroundGray,
+                      groupValue: _selectedOption1,
+                      children: {
+                        0: _buildSegment("안 함"),
+                        1: _buildSegment("5분"),
+                        2: _buildSegment("15분"),
+                        3: _buildSegment("30분"),
+                        4: _buildSegment("1시간"),
+                      },
+                      onValueChanged: (int value) {
+                        setState(() {
+                          _selectedOption1 = value;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    // 평균 표시 옵션
+                    Text(
+                      "평균 표시",
+                      style: GoogleFonts.notoSans(
+                        textStyle: const TextStyle(
+                          color: CupertinoColors.systemGrey6,
+                          fontSize: 14,
                         ),
                       ),
-                    ],
-                  ),
-                  SizedBox(
-                    height: 4,
-                  ),
-                  CupertinoSegmentedControl<int>(
-                    padding: const EdgeInsets.all(4),
-                    unselectedColor: CupertinoColors.darkBackgroundGray,
-                    groupValue: _selectedOption1,
-                    children: {
-                      0: _buildSegment("안 함"),
-                      1: _buildSegment("5분"),
-                      2: _buildSegment("15분"),
-                      3: _buildSegment("30분"),
-                      4: _buildSegment("1시간"),
-                    },
-                    onValueChanged: (int value) {
-                      setState(() {
-                        _selectedOption1 = value;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 8),
-                  // 평균 경험치 표시 옵션
-                  Text(
-                    "평균 경험치 표시",
-                    style: GoogleFonts.notoSans(
-                      textStyle: const TextStyle(
-                        color: CupertinoColors.systemGrey6,
-                        fontSize: 14,
-                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  CupertinoSegmentedControl<int>(
-                    padding: const EdgeInsets.all(4),
-                    unselectedColor: CupertinoColors.darkBackgroundGray,
-                    groupValue: _selectedOption2,
-                    children: {
-                      0: _buildSegment("안 함"),
-                      1: _buildSegment("5분"),
-                      2: _buildSegment("15분"),
-                      3: _buildSegment("30분"),
-                      4: _buildSegment("1시간"),
-                    },
-                    onValueChanged: (int value) {
-                      setState(() {
-                        _selectedOption2 = value;
-                      });
-                    },
-                  ),
-                ],
+                    const SizedBox(height: 4),
+                    CupertinoSegmentedControl<int>(
+                      padding: const EdgeInsets.all(4),
+                      unselectedColor: CupertinoColors.darkBackgroundGray,
+                      groupValue: _selectedOption2,
+                      children: {
+                        0: _buildSegment("안 함"),
+                        1: _buildSegment("5분"),
+                        2: _buildSegment("15분"),
+                        3: _buildSegment("30분"),
+                        4: _buildSegment("1시간"),
+                      },
+                      onValueChanged: (int value) {
+                        setState(() {
+                          _selectedOption2 = value;
+                        });
+                      },
+                    ),
+                    // Options이 남은 공간을 모두 차지하도록 Expanded 사용 (원하는 경우 추가 위젯 배치 가능)
+                    Expanded(child: Container()),
+                  ],
+                ),
               ),
             ),
           ],
@@ -343,9 +355,7 @@ class CustomCupertinoSlider extends StatelessWidget {
             await audioPlayer.play(AssetSource('timer_alarm.mp3'));
           },
         ),
-        SizedBox(
-          width: 4,
-        ),
+        const SizedBox(width: 4),
         SizedBox(
           width: 146, // 원하는 슬라이더 전체 너비
           child: SliderTheme(
@@ -364,7 +374,6 @@ class CustomCupertinoSlider extends StatelessWidget {
               showValueIndicator: label == ""
                   ? ShowValueIndicator.never
                   : ShowValueIndicator.always,
-              // padding은 기본 트랙 모양에서 사용되지 않으므로 별도 설정 불필요
             ),
             child: Slider(
               label: label,

@@ -53,6 +53,7 @@ else:
 class ROICoordinates(BaseModel):
     level: List[float]  # [x1, y1, x2, y2]
     exp: List[float]    # [x1, y1, x2, y2]
+    meso: List[float]
 
 # Lifespan 컨텍스트 매니저를 활용한 시작/종료 작업 처리
 @asynccontextmanager
@@ -70,7 +71,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 # 전역 변수: Flutter에서 받은 ROI 좌표 저장
-roi_data = {"level": None, "exp": None}
+roi_data = {"level": None, "exp": None, "meso": None}
 
 @app.get("/health")
 async def health():
@@ -81,8 +82,18 @@ async def set_roi(roi: ROICoordinates):
     global roi_data
     roi_data["level"] = roi.level
     roi_data["exp"] = roi.exp
-    logger.info(f"ROI 데이터 저장됨: Level={roi.level}, EXP={roi.exp}")
-    return {"message": "ROI successfully updated", "level": roi.level, "exp": roi.exp}
+    response_data = {
+        "message": "ROI successfully updated",
+        "level": roi.level,
+        "exp": roi.exp
+    }
+    if roi.meso is not None:
+        roi_data["meso"] = roi.meso
+        logger.info(f"ROI 데이터 저장됨: Level={roi.level}, EXP={roi.exp}, MESO={roi.meso}")
+        response_data["meso"] = roi.meso
+    else:
+        logger.info(f"ROI 데이터 저장됨: Level={roi.level}, EXP={roi.exp}")
+    return response_data
 
 def capture_roi_with_mss(x1, y1, x2, y2):
     monitor = {
@@ -123,8 +134,8 @@ def find_exp_and_lv():
     extracted_exp_text_debug = pytesseract.image_to_string(processed_exp, lang='digits', config=custom_config)
     extracted_lv_text_debug = pytesseract.image_to_string(processed_lv, lang='digits', config=custom_config)
     
-    logger.info(f"Extracted EXP text: {extracted_exp_text_debug}")
-    logger.info(f"Extracted Level text: {extracted_lv_text_debug}")
+    logger.info(f"추출된 경험치 텍스트: {extracted_exp_text_debug}")
+    logger.info(f"추출된 레벨 텍스트: {extracted_lv_text_debug}")
     
     extracted_exp_text_debug = extracted_exp_text_debug.encode("utf-8", errors="ignore").decode("utf-8")
     extracted_lv_text_debug = extracted_lv_text_debug.encode("utf-8", errors="ignore").decode("utf-8")
@@ -148,6 +159,36 @@ def find_exp_and_lv():
     
     return exp_value, exp_percentage, level
 
+def find_meso():
+    logger.info("ROI에서 메소 데이터 추출 시작...")
+    if not roi_data["meso"]:
+        raise HTTPException(status_code=400, detail="ROI가 설정되지 않았습니다.")
+    
+    x1_meso, y1_meso, x2_meso, y2_meso = roi_data["meso"]
+    
+    meso_roi = capture_roi_with_mss(x1_meso, y1_meso, x2_meso, y2_meso)
+    
+    processed_meso = preprocess_roi(meso_roi)
+    
+    cv2.imwrite(os.path.join(debug_base_path, "meso_roi_debug.png"), processed_meso)
+    
+    custom_config = r'--oem 3 --psm 7'
+    extracted_meso_text_debug = pytesseract.image_to_string(processed_meso, lang='digits', config=custom_config)
+
+    logger.info(f"추출된 메소 텍스트: {extracted_meso_text_debug}")
+    
+    extracted_meso_text_debug = extracted_meso_text_debug.encode("utf-8", errors="ignore").decode("utf-8")
+    
+    extracted_meso_text = re.sub(r"[^\d]", "", extracted_meso_text_debug)  # 숫자만 남기고 제거
+    meso_match = re.search(r"\d+", extracted_meso_text)  # 순수 숫자만 추출
+    if meso_match:
+        meso = int(meso_match.group(0))
+    else:
+        cv2.imwrite(os.path.join(debug_base_path, "meso_roi_debug_error.png"), processed_meso)
+        raise HTTPException(status_code=400, detail=f"메소 데이터 파싱 실패: '{extracted_meso_text_debug}'")
+    
+    return meso
+
 @app.get("/extract_exp_and_level")
 async def extract_exp_and_level():
     logger.info("ROI에서 EXP 및 LV 데이터 추출 요청 수신")
@@ -164,6 +205,23 @@ async def extract_exp_and_level():
     except Exception as e:
         logger.error(f"데이터 추출 중 오류 발생: {e}")
         raise HTTPException(status_code=400, detail=f"EXP 또는 LV 데이터 추출 실패: {e}")
+    
+@app.get("/extract_meso")
+async def extract_meso():
+    logger.info("ROI에서 메소 데이터 추출 요청 수신")
+    if not roi_data["meso"]:
+        raise HTTPException(status_code=400, detail="ROI가 설정되지 않았습니다.")
+    try:
+        meso = find_meso()
+        if meso is None:
+            raise HTTPException(status_code=400, detail="메소 데이터가 유효하지 않습니다.")
+        logger.info(f"추출 완료 - 메소: {meso}")
+        return JSONResponse(content={"meso": meso})
+    except HTTPException as http_exc:
+        raise http_exc
+    except Exception as e:
+        logger.error(f"데이터 추출 중 오류 발생: {e}")
+        raise HTTPException(status_code=400, detail=f"메소 데이터 추출 실패: {e}")
 
 @app.get("/shutdown")
 async def shutdown():
