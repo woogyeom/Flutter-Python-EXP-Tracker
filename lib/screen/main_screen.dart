@@ -79,7 +79,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
 
   @override
   void dispose() {
-    log('dispose');
+    safeLog('dispose');
     windowManager.removeListener(this);
     super.dispose();
   }
@@ -139,14 +139,14 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
               "bottom": expRect!.bottom,
             }
           : null,
-      "mesoRect": mesoRect != null
-          ? {
-              "left": mesoRect!.left,
-              "top": mesoRect!.top,
-              "right": mesoRect!.right,
-              "bottom": mesoRect!.bottom,
-            }
-          : null,
+      // "mesoRect": mesoRect != null
+      //     ? {
+      //         "left": mesoRect!.left,
+      //         "top": mesoRect!.top,
+      //         "right": mesoRect!.right,
+      //         "bottom": mesoRect!.bottom,
+      //       }
+      //     : null,
       "timerEndTime": timerEndTime.inSeconds,
       "volume": _audioPlayer.volume,
       "showAverage": showAverage.inSeconds,
@@ -154,9 +154,9 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     };
     try {
       await file.writeAsString(jsonEncode(config));
-      // log("Config saved: ${jsonEncode(config)}");
+      // safeLog("Config saved: ${jsonEncode(config)}");
     } catch (e) {
-      log("Error saving config: $e");
+      safeLog("Error saving config: $e");
     }
   }
 
@@ -169,7 +169,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
 
         // config가 비어있으면 추가 처리 없이 isConfigLoaded만 true로 설정하고 반환
         if (config.isEmpty) {
-          log("Empty config, skipping further config load.");
+          safeLog("Empty config, skipping further config load.");
           _refreshUI(() {
             isConfigLoaded = true;
           });
@@ -195,15 +195,15 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
               rect["bottom"],
             );
           }
-          if (config["mesoRect"] != null) {
-            Map<String, dynamic> rect = config["mesoRect"];
-            mesoRect = Rect.fromLTRB(
-              rect["left"],
-              rect["top"],
-              rect["right"],
-              rect["bottom"],
-            );
-          }
+          // if (config["mesoRect"] != null) {
+          //   Map<String, dynamic> rect = config["mesoRect"];
+          //   mesoRect = Rect.fromLTRB(
+          //     rect["left"],
+          //     rect["top"],
+          //     rect["right"],
+          //     rect["bottom"],
+          //   );
+          // }
           timerEndTime = Duration(seconds: config["timerEndTime"]);
           _audioPlayer.setVolume(config["volume"]);
           showAverage = Duration(seconds: config["showAverage"]);
@@ -211,15 +211,15 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
           // if (showMeso) windowManager.setSize(Size(appSize.width, 250));
           isConfigLoaded = true;
         });
-        log("Config loaded: $config");
+        safeLog("Config loaded: $config");
 
         // levelRect와 expRect가 모두 설정되어 있을 때만 ROI 전송
         if (levelRect != null && expRect != null) {
           await waitForServerReady();
           await sendROIToServer();
-          log("ROI Sent to Server");
+          safeLog("ROI Sent to Server");
         } else {
-          log("No ROI data");
+          safeLog("No ROI data");
         }
       }
     } catch (e) {
@@ -255,19 +255,19 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
           );
         },
       );
-      log("Error loading config: $e");
+      safeLog("Error loading config: $e");
     }
   }
 
   Future<bool> checkServerReady() async {
     try {
       final response =
-          await http.get(Uri.parse("http://127.0.0.1:5000/health"));
+          await http.get(Uri.parse("http://127.0.0.1:1108/health"));
       if (response.statusCode == 200) {
         return true;
       }
     } catch (e) {
-      // log("서버 준비 상태 확인 중 오류 발생: $e");
+      // safeLog("서버 준비 상태 확인 중 오류 발생: $e");
     }
     return false;
   }
@@ -276,7 +276,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     final startTime = DateTime.now();
     while (true) {
       if (await checkServerReady()) {
-        log("서버 준비 완료");
+        safeLog("서버 준비 완료");
         return;
       }
       // 타임아웃 처리
@@ -290,11 +290,11 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
 
   Future<void> sendROIToServer() async {
     if (levelRect == null || expRect == null) {
-      log("ROI 데이터가 설정되지 않았습니다.");
+      safeLog("ROI 데이터가 설정되지 않았습니다.");
       return;
     }
 
-    final url = Uri.parse("http://127.0.0.1:5000/set_roi");
+    final url = Uri.parse("http://127.0.0.1:1108/set_roi");
 
     // 필수 ROI 데이터
     Map<String, dynamic> roiData = {
@@ -328,12 +328,12 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
         _refreshUI(() {
           isRoiSet = true;
         });
-        log("ROI 데이터 성공적으로 서버에 전송됨: ${response.body}");
+        safeLog("ROI 데이터 성공적으로 서버에 전송됨: ${response.body}");
       } else {
-        log("서버 오류: ${response.statusCode} - ${response.body}");
+        safeLog("서버 오류: ${response.statusCode} - ${response.body}");
       }
     } catch (e) {
-      log("ROI 전송 중 오류 발생: $e");
+      safeLog("ROI 전송 중 오류 발생: $e");
     }
   }
 
@@ -341,7 +341,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   Future<void> fetchAndDisplayExpData() async {
     try {
       final response = await http
-          .get(Uri.parse('http://127.0.0.1:5000/extract_exp_and_level'));
+          .get(Uri.parse('http://127.0.0.1:1108/extract_exp_and_level'));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -355,14 +355,15 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
             initialLevel = level;
             initialExp = exp; // 최초 경험치를 기준값으로 설정
             initialPercentage = percentage;
-            log("초기값: initialExp=$initialExp, initialPercentage=$initialPercentage, initialLevel=$initialLevel | ");
+            safeLog(
+                "초기값: initialExp=$initialExp, initialPercentage=$initialPercentage, initialLevel=$initialLevel | ");
             return;
           }
 
           // 레벨업 감지
           if (level > lastLevel &&
               ((level - lastLevel) == 1 || (level - lastLevel) == 2)) {
-            log("Level Up Detected!");
+            safeLog("Level Up Detected!");
             int levelUpExp = expDataLoader.getExpForLevel(lastLevel);
 
             expBeforeLevelUp = levelUpExp - lastExp + totalExp;
@@ -370,8 +371,10 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
             initialExp = 0; // 레벨업 후 새로운 기준값 설정
             initialPercentage = 0.00;
             lastLevel = level;
-            log("초기값: initialExp=$initialExp, initialPercentage=$initialPercentage, initialLevel=$initialLevel | ");
-            log("레벨업 전: expBeforeLevelUp=$expBeforeLevelUp, percentageBeforeLevelUp=$percentageBeforeLevelUp");
+            safeLog(
+                "초기값: initialExp=$initialExp, initialPercentage=$initialPercentage, initialLevel=$initialLevel | ");
+            safeLog(
+                "레벨업 전: expBeforeLevelUp=$expBeforeLevelUp, percentageBeforeLevelUp=$percentageBeforeLevelUp");
           }
 
           // 경험치 증가량을 계산
@@ -383,14 +386,14 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
           lastPercentage = percentage;
           lastLevel = level;
 
-          log("최근값: lastExp=$lastExp, lastPercentage=$lastPercentage, lastLevel=$lastLevel | "
-              "누적값: totalExp=$totalExp, totalPercentage=$totalPercentage | ");
+          safeLog(
+              "최근값: lastExp=$lastExp, lastPercentage=$lastPercentage, lastLevel=$lastLevel | 누적값: totalExp=$totalExp, totalPercentage=$totalPercentage | ");
         });
       } else {
         throw Exception("Failed to fetch EXP data");
       }
     } catch (e) {
-      log("[Server] Error fetching EXP data: $e");
+      safeLog("[Server] Error fetching EXP data: $e");
     }
   }
 
@@ -398,7 +401,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   Future<void> fetchAndDisplayMesoData() async {
     try {
       final response =
-          await http.get(Uri.parse('http://127.0.0.1:5000/extract_meso'));
+          await http.get(Uri.parse('http://127.0.0.1:1108/extract_meso'));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -407,19 +410,19 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
         _refreshUI(() {
           if (initialMeso == 0) {
             initialMeso = meso; // 타이머 시작 시 초기값 설정
-            log("  초기 메소: $initialMeso");
+            safeLog("  초기 메소: $initialMeso");
             return;
           }
 
           totalMeso = meso - initialMeso; // 초기값과 비교하여 증가량 계산
         });
 
-        log("  누적 메소: $totalMeso");
+        safeLog("  누적 메소: $totalMeso");
       } else {
         throw Exception("Failed to fetch Meso data");
       }
     } catch (e) {
-      log("[Server] Error fetching Meso data: $e");
+      safeLog("[Server] Error fetching Meso data: $e");
     }
   }
 
@@ -573,7 +576,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
 
   @override
   void onWindowClose() async {
-    log("Closing app...");
+    safeLog("Closing app...");
     await widget.serverManager.shutdownServer(); // 서버 종료 후
     windowManager.close(); // 앱 종료
   }

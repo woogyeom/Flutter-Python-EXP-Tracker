@@ -222,6 +222,11 @@ async def extract_meso():
     except Exception as e:
         logger.error(f"데이터 추출 중 오류 발생: {e}")
         raise HTTPException(status_code=400, detail=f"메소 데이터 추출 실패: {e}")
+    
+@app.get("/")
+async def root():
+    return {"message": "Server is running"}
+
 
 @app.get("/shutdown")
 async def shutdown():
@@ -237,7 +242,7 @@ async def shutdown():
 # uvicorn.Server를 직접 사용하여 앱 실행
 if __name__ == "__main__":
     from uvicorn import Config, Server
-    config = Config(app, host="127.0.0.1", port=5000, log_level="info", lifespan="on")
+    config = Config(app, host="127.0.0.1", port=1108, log_level="info", lifespan="on")
     server = Server(config)
     # 앱 상태에 서버 인스턴스를 저장해서 shutdown 엔드포인트에서 참조할 수 있게 함
     app.state.server = server
