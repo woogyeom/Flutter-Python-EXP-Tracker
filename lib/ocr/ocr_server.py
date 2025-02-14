@@ -1,6 +1,4 @@
 import sys
-import threading
-import time
 import cv2
 import pytesseract
 import numpy as np
@@ -10,13 +8,11 @@ from PIL import Image
 import mss
 import os
 import re
-import zipfile
 import logging
 from logging.handlers import TimedRotatingFileHandler
 from pydantic import BaseModel
 from typing import List, Optional
 from contextlib import asynccontextmanager
-import asyncio
 import sys
 
 if sys.stdout is None:
