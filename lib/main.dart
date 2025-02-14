@@ -1,11 +1,10 @@
 import 'package:flutter/cupertino.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'package:flutter_exp_timer/screen/main_screen.dart';
 import 'package:flutter_exp_timer/server_manager.dart'; // 서버 매니저 불러오기
 
-const String appVersion = "1.3.0";
+const String appVersion = "1.3.1";
 const Size appSize = Size(400, 200);
 
 void main() async {
