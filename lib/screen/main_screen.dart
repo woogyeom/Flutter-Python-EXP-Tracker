@@ -28,6 +28,7 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> with WindowListener {
+  // 필드 선언
   ExpDataLoader expDataLoader = ExpDataLoader();
   final AudioPlayer _audioPlayer = AudioPlayer();
 
@@ -68,31 +69,45 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
 
   final numberFormat = NumberFormat("#,###");
 
+  /// 안전한 setState: 위젯이 mount되어 있을 때만 상태 업데이트
+  void _safeSetState(VoidCallback fn) {
+    if (mounted) setState(fn);
+  }
+
   @override
   void initState() {
     super.initState();
     windowManager.addListener(this);
-    expDataLoader.loadExpData();
     _audioPlayer.setVolume(0.5);
+    // 첫 프레임 렌더링 이후에 초기화 작업 시작
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadConfig();
+      _initializeApp();
     });
+  }
+
+  /// 앱 초기화: exp 데이터 로드와 config 로드를 순차적으로 실행
+  Future<void> _initializeApp() async {
+    try {
+      await expDataLoader.loadExpData();
+    } catch (e) {
+      safeLog("Error loading exp data: $e");
+    }
+    await _loadConfig();
   }
 
   @override
   void dispose() {
     safeLog('dispose');
     windowManager.removeListener(this);
+    _timer?.cancel();
     super.dispose();
   }
 
-  // _refreshUI: 상태 업데이트 후 화면 갱신을 위한 헬퍼 메소드
+  /// _refreshUI: 안전하게 상태 업데이트하며 타이머 텍스트와 평균값 계산
   void _refreshUI(VoidCallback updateFn) {
-    setState(() {
+    _safeSetState(() {
       updateFn();
-      // _elapsedTime로부터 timerText를 갱신
       timerText = _formatDuration(_elapsedTime);
-      // 평균 EXP/Percentage 계산 (경과 시간이 있을 때)
       if (showAverage != Duration.zero && _elapsedTime.inSeconds > 0) {
         averageExp =
             ((totalExp / _elapsedTime.inSeconds) * showAverage.inSeconds)
@@ -106,6 +121,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     });
   }
 
+  /// _getConfigFile: config 파일 경로를 생성하고, 없으면 빈 파일("{}")로 생성
   Future<File> _getConfigFile() async {
     const String configPath = "config/config.json";
     final Directory currentDir = Directory.current;
@@ -117,11 +133,10 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     if (!await configFile.exists()) {
       await configFile.writeAsString("{}");
     }
-
     return configFile;
   }
 
-  // 설정값을 JSON 파일로 저장
+  /// _saveConfig: 현재 설정을 JSON 파일에 저장
   Future<void> _saveConfig() async {
     final file = await _getConfigFile();
     Map<String, dynamic> config = {
@@ -141,166 +156,126 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
               "bottom": expRect!.bottom,
             }
           : null,
-      // "mesoRect": mesoRect != null
-      //     ? {
-      //         "left": mesoRect!.left,
-      //         "top": mesoRect!.top,
-      //         "right": mesoRect!.right,
-      //         "bottom": mesoRect!.bottom,
-      //       }
-      //     : null,
       "timerEndTime": timerEndTime.inSeconds,
       "volume": _audioPlayer.volume,
       "showAverage": showAverage.inSeconds,
-      // "showMeso": showMeso,
     };
     try {
       await file.writeAsString(jsonEncode(config));
-      // safeLog("Config saved: ${jsonEncode(config)}");
     } catch (e) {
       safeLog("Error saving config: $e");
     }
   }
 
+  /// _loadConfig: 설정 파일을 읽고, JSON 파싱 오류 발생 시 빈 파일로 재생성
+  /// 그리고 config를 기반으로 상태 변수들을 업데이트 후,
+  /// ROI 데이터가 있으면 서버 헬스 체크 및 ROI 전송을 진행.
   Future<void> _loadConfig() async {
     try {
       final file = await _getConfigFile();
-      if (await file.exists()) {
-        String content = await file.readAsString();
-        Map<String, dynamic> config = jsonDecode(content);
+      String content = await file.readAsString();
+      Map<String, dynamic> config;
+      try {
+        config = jsonDecode(content);
+      } catch (e) {
+        safeLog("Invalid config format. Recreating config file.");
+        await file.writeAsString("{}");
+        config = {};
+      }
 
-        // config가 비어있으면 추가 처리 없이 isConfigLoaded만 true로 설정하고 반환
-        if (config.isEmpty) {
-          safeLog("Empty config, skipping further config load.");
-          _refreshUI(() {
-            isConfigLoaded = true;
-          });
-          return;
-        }
-
+      if (config.isEmpty) {
+        safeLog("Empty config, skipping further config load.");
         _refreshUI(() {
-          if (config["levelRect"] != null) {
-            Map<String, dynamic> rect = config["levelRect"];
-            levelRect = Rect.fromLTRB(
-              rect["left"],
-              rect["top"],
-              rect["right"],
-              rect["bottom"],
-            );
-          }
-          if (config["expRect"] != null) {
-            Map<String, dynamic> rect = config["expRect"];
-            expRect = Rect.fromLTRB(
-              rect["left"],
-              rect["top"],
-              rect["right"],
-              rect["bottom"],
-            );
-          }
-          // Optional: mesoRect이 없으면 그냥 null 유지
-          // if (config["mesoRect"] != null) {
-          //   Map<String, dynamic> rect = config["mesoRect"];
-          //   mesoRect = Rect.fromLTRB(
-          //     rect["left"],
-          //     rect["top"],
-          //     rect["right"],
-          //     rect["bottom"],
-          //   );
-          // }
-          // 필드가 없으면 기본값 사용
-          timerEndTime = Duration(seconds: config["timerEndTime"] ?? 0);
-          _audioPlayer.setVolume(config["volume"] ?? 0.5);
-          showAverage = Duration(seconds: config["showAverage"] ?? 0);
-          // Optional: showMeso 기본값은 false
-          // showMeso = config["showMeso"] ?? false;
           isConfigLoaded = true;
         });
-        safeLog("Config loaded: $config");
+        return;
+      }
 
-        // levelRect와 expRect가 모두 설정되어 있을 때만 ROI 전송
-        if (levelRect != null && expRect != null) {
-          await waitForServerReady();
-          await sendROIToServer();
-          safeLog("ROI Sent to Server");
-        } else {
-          safeLog("No ROI data");
+      _refreshUI(() {
+        if (config["levelRect"] != null && config["levelRect"] is Map) {
+          Map<String, dynamic> rect = config["levelRect"];
+          levelRect = Rect.fromLTRB(
+            (rect["left"] ?? 0).toDouble(),
+            (rect["top"] ?? 0).toDouble(),
+            (rect["right"] ?? 0).toDouble(),
+            (rect["bottom"] ?? 0).toDouble(),
+          );
         }
+        if (config["expRect"] != null && config["expRect"] is Map) {
+          Map<String, dynamic> rect = config["expRect"];
+          expRect = Rect.fromLTRB(
+            (rect["left"] ?? 0).toDouble(),
+            (rect["top"] ?? 0).toDouble(),
+            (rect["right"] ?? 0).toDouble(),
+            (rect["bottom"] ?? 0).toDouble(),
+          );
+        }
+        timerEndTime = Duration(seconds: config["timerEndTime"] ?? 0);
+        _audioPlayer.setVolume(config["volume"] ?? 0.5);
+        showAverage = Duration(seconds: config["showAverage"] ?? 0);
+        isConfigLoaded = true;
+      });
+      safeLog("Config loaded: $config");
+
+      if (levelRect != null && expRect != null) {
+        await _handleServerInitialization();
+      } else {
+        safeLog("No ROI data");
       }
     } catch (e) {
-      showCupertinoDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return CupertinoAlertDialog(
-            content: Text(
-              "서버와 연결 실패",
-              style: GoogleFonts.notoSans(
-                textStyle: const TextStyle(
-                  color: CupertinoColors.black,
-                  fontSize: 16,
-                ),
-              ),
-            ),
-            actions: [
-              CupertinoDialogAction(
-                child: Text(
-                  "확인",
-                  style: GoogleFonts.notoSans(
-                    textStyle: const TextStyle(
-                      color: CupertinoColors.black,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-              ),
-            ],
-          );
-        },
-      );
       safeLog("Error loading config: $e");
+      // 서버 연결 실패 등 치명적인 오류 발생 시 앱 종료
+      exit(1);
     }
   }
 
+  /// _handleServerInitialization: 서버 헬스 체크와 ROI 전송을 순차적으로 실행
+  Future<void> _handleServerInitialization() async {
+    try {
+      await _waitForServerReady();
+      await sendROIToServer();
+      safeLog("ROI Sent to Server");
+    } catch (e) {
+      safeLog("Server initialization error: $e");
+      exit(1);
+    }
+  }
+
+  /// checkServerReady: /health 엔드포인트를 호출하여 서버 준비 여부 확인
   Future<bool> checkServerReady() async {
     try {
       final response =
           await http.get(Uri.parse("http://127.0.0.1:1108/health"));
-      if (response.statusCode == 200) {
-        return true;
-      }
+      return response.statusCode == 200;
     } catch (e) {
-      // safeLog("서버 준비 상태 확인 중 오류 발생: $e");
+      return false;
     }
-    return false;
   }
 
-  Future<void> waitForServerReady({int timeoutSeconds = 30}) async {
+  /// _waitForServerReady: 일정 시간 동안 서버 준비 여부를 확인
+  /// 타임아웃되면 로그를 남기고 앱 종료
+  Future<void> _waitForServerReady({int timeoutSeconds = 30}) async {
     final startTime = DateTime.now();
     while (true) {
       if (await checkServerReady()) {
         safeLog("서버 준비 완료");
         return;
       }
-      // 타임아웃 처리
       if (DateTime.now().difference(startTime).inSeconds > timeoutSeconds) {
-        throw Exception("Timeout: 서버가 준비되지 않았습니다.");
+        safeLog("Timeout: 서버가 준비되지 않았습니다.");
+        exit(1);
       }
-      // 재시도 간격
       await Future.delayed(Duration(milliseconds: 500));
     }
   }
 
+  /// sendROIToServer: ROI 데이터를 서버에 전송
   Future<void> sendROIToServer() async {
     if (levelRect == null || expRect == null) {
       safeLog("ROI 데이터가 설정되지 않았습니다.");
       return;
     }
-
     final url = Uri.parse("http://127.0.0.1:1108/set_roi");
-
-    // 필수 ROI 데이터
     Map<String, dynamic> roiData = {
       "level": [
         levelRect!.left,
@@ -310,8 +285,6 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
       ],
       "exp": [expRect!.left, expRect!.top, expRect!.right, expRect!.bottom],
     };
-
-    // mesoRect가 있으면 추가
     if (mesoRect != null) {
       roiData["meso"] = [
         mesoRect!.left,
@@ -320,14 +293,10 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
         mesoRect!.bottom
       ];
     }
-
     try {
-      final response = await http.post(
-        url,
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(roiData),
-      );
-
+      final response = await http.post(url,
+          headers: {"Content-Type": "application/json"},
+          body: jsonEncode(roiData));
       if (response.statusCode == 200) {
         _refreshUI(() {
           isRoiSet = true;
@@ -341,15 +310,13 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     }
   }
 
-  // FastAPI에서 경험치 데이터 가져오기
+  /// fetchAndDisplayExpData: 서버에서 경험치 데이터를 가져와 UI 업데이트
   Future<void> fetchAndDisplayExpData() async {
     try {
       final response = await http
           .get(Uri.parse('http://127.0.0.1:1108/extract_exp_and_level'));
-
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-
         int exp = data['exp'];
         double percentage = data['percentage'];
         int level = data['level'];
@@ -357,41 +324,32 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
         _refreshUI(() {
           if (initialLevel == 0) {
             initialLevel = level;
-            initialExp = exp; // 최초 경험치를 기준값으로 설정
+            initialExp = exp;
             initialPercentage = percentage;
             safeLog(
-                "초기값: initialExp=$initialExp, initialPercentage=$initialPercentage, initialLevel=$initialLevel | ");
+                "초기값: initialExp=$initialExp, initialPercentage=$initialPercentage, initialLevel=$initialLevel");
             return;
           }
-
-          // 레벨업 감지
           if (level > lastLevel &&
               ((level - lastLevel) == 1 || (level - lastLevel) == 2)) {
             safeLog("Level Up Detected!");
             int levelUpExp = expDataLoader.getExpForLevel(lastLevel);
-
             expBeforeLevelUp = levelUpExp - lastExp + totalExp;
             percentageBeforeLevelUp = 100 - lastPercentage + totalPercentage;
-            initialExp = 0; // 레벨업 후 새로운 기준값 설정
+            initialExp = 0;
             initialPercentage = 0.00;
             lastLevel = level;
             safeLog(
-                "초기값: initialExp=$initialExp, initialPercentage=$initialPercentage, initialLevel=$initialLevel | ");
-            safeLog(
                 "레벨업 전: expBeforeLevelUp=$expBeforeLevelUp, percentageBeforeLevelUp=$percentageBeforeLevelUp");
           }
-
-          // 경험치 증가량을 계산
           totalExp = exp - initialExp + expBeforeLevelUp;
           totalPercentage =
               percentage - initialPercentage + percentageBeforeLevelUp;
-
           lastExp = exp;
           lastPercentage = percentage;
           lastLevel = level;
-
           safeLog(
-              "최근값: lastExp=$lastExp, lastPercentage=$lastPercentage, lastLevel=$lastLevel | 누적값: totalExp=$totalExp, totalPercentage=${totalPercentage.toStringAsFixed(2)} | ");
+              "최근값: lastExp=$lastExp, lastPercentage=$lastPercentage, lastLevel=$lastLevel | 누적값: totalExp=$totalExp, totalPercentage=${totalPercentage.toStringAsFixed(2)}");
         });
       } else {
         throw Exception("Failed to fetch EXP data");
@@ -401,27 +359,23 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     }
   }
 
-  // FastAPI에서 메소 데이터 가져오기
+  /// fetchAndDisplayMesoData: 서버에서 메소 데이터를 가져와 UI 업데이트
   Future<void> fetchAndDisplayMesoData() async {
     try {
       final response =
           await http.get(Uri.parse('http://127.0.0.1:1108/extract_meso'));
-
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         int meso = data['meso'];
-
         _refreshUI(() {
           if (initialMeso == 0) {
-            initialMeso = meso; // 타이머 시작 시 초기값 설정
-            safeLog("  초기 메소: $initialMeso");
+            initialMeso = meso;
+            safeLog("초기 메소: $initialMeso");
             return;
           }
-
-          totalMeso = meso - initialMeso; // 초기값과 비교하여 증가량 계산
+          totalMeso = meso - initialMeso;
         });
-
-        safeLog("  누적 메소: $totalMeso");
+        safeLog("누적 메소: $totalMeso");
       } else {
         throw Exception("Failed to fetch Meso data");
       }
@@ -430,21 +384,17 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     }
   }
 
-  // 타이머 시작
+  /// _startTimer: 타이머 시작 및 주기적으로 EXP/메소 데이터 업데이트
   Future<void> _startTimer() async {
     _refreshUI(() {
       isRunning = true;
     });
-
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) async {
       _refreshUI(() {
         _elapsedTime += const Duration(seconds: 1);
       });
-
       fetchAndDisplayExpData();
-
       if (showMeso) fetchAndDisplayMesoData();
-
       if (timerEndTime != Duration.zero && _elapsedTime >= timerEndTime) {
         _audioPlayer.play(AssetSource('timer_alarm.mp3'));
         _stopTimer();
@@ -452,7 +402,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     });
   }
 
-  // 타이머 멈추기
+  /// _stopTimer: 타이머 중지
   Future<void> _stopTimer() async {
     _refreshUI(() {
       isRunning = false;
@@ -460,7 +410,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     _timer?.cancel();
   }
 
-  // 타이머 초기화
+  /// _resetTimer: 타이머 및 관련 변수 초기화
   void _resetTimer() {
     _refreshUI(() {
       isRunning = false;
@@ -483,7 +433,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     _timer?.cancel();
   }
 
-  // 시간 포맷
+  /// _formatDuration: Duration을 HH:MM:SS 형식으로 변환
   String _formatDuration(Duration duration) {
     String twoDigits(int n) => n.toString().padLeft(2, "0");
     String hours = twoDigits(duration.inHours.remainder(60));
@@ -492,7 +442,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     return "$hours:$minutes:$seconds";
   }
 
-  // 설정 화면 열기
+  /// _openSettingsScreen: 설정 화면 열기
   void _openSettingsScreen() async {
     final result = await Navigator.push(
       context,
@@ -508,18 +458,17 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
         reverseTransitionDuration: Duration.zero,
       ),
     );
-
     if (result != null) {
       _refreshUI(() {
         timerEndTime = result['timerEndTime'];
         showAverage = result['showAverage'];
         showMeso = result['showMeso'];
       });
-      _saveConfig(); // 변경된 설정 저장
+      _saveConfig();
     }
   }
 
-  // 영역 선택 스크린 열기
+  /// _openRectSelectScreen: 영역 선택 화면 열기 (ROI 설정)
   Future<void> _openRectSelectScreen() async {
     final result = await Navigator.push(
       context,
@@ -530,33 +479,30 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
         reverseTransitionDuration: Duration.zero,
       ),
     );
-
     if (result != null) {
       _refreshUI(() {
         levelRect = result['level'];
         expRect = result['exp'];
       });
-      setState(() {
+      _safeSetState(() {
         isRoiSet = true;
       });
-      _saveConfig(); // ROI 정보 저장
+      _saveConfig();
       sendROIToServer();
     }
   }
 
-  // 메소용 Rect 선택 스크린 열기 (옵셔널)
+  /// _openMesoRectSelectScreen: 메소 영역 선택 화면 열기
   Future<void> _openMesoRectSelectScreen() async {
     final result = await Navigator.push(
       context,
       PageRouteBuilder(
-        // 같은 RectSelectScreen을 사용하되, 추가 파라미터를 전달해 "메소" 용도임을 알림 (스크린 내에서 분기 처리 가능)
         pageBuilder: (context, animation, secondaryAnimation) =>
             RectSelectScreen(isMeso: true),
         transitionDuration: Duration.zero,
         reverseTransitionDuration: Duration.zero,
       ),
     );
-
     if (result != null) {
       _refreshUI(() {
         mesoRect = result['meso'];
@@ -566,11 +512,10 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     }
   }
 
-  // 깃허브 링크 열기
+  /// _launchURL: GitHub 링크 열기
   void _launchURL() async {
     final Uri url =
         Uri.parse("https://github.com/woogyeom/Flutter-Python-EXP-Tracker");
-
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     } else {
@@ -581,8 +526,8 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   @override
   void onWindowClose() async {
     safeLog("Closing app...");
-    await widget.serverManager.shutdownServer(); // 서버 종료 후
-    windowManager.close(); // 앱 종료
+    await widget.serverManager.shutdownServer();
+    windowManager.close();
   }
 
   @override
@@ -594,7 +539,6 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
       child: DragToMoveArea(
         child: Column(
           children: [
-            // 상단 버튼 Row
             const SizedBox(height: 4),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -603,11 +547,8 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                 CupertinoButton(
                   padding: EdgeInsets.zero,
                   onPressed: _launchURL,
-                  child: const Icon(
-                    CupertinoIcons.info,
-                    color: CupertinoColors.systemGrey6,
-                    size: 24,
-                  ),
+                  child: const Icon(CupertinoIcons.info,
+                      color: CupertinoColors.systemGrey6, size: 24),
                 ),
                 SizedBox(
                   width: 192,
@@ -623,7 +564,8 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                               showMeso = value;
                             });
                             _saveConfig();
-                            setState(() {
+                            _safeSetState(() {
+                              // appSize는 main.dart에서 정의된 글로벌 변수라고 가정
                               if (showMeso) {
                                 windowManager.setSize(Size(appSize.width, 250));
                               } else {
@@ -650,20 +592,14 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                   onPressed: () async {
                     await _openRectSelectScreen();
                   },
-                  child: const Icon(
-                    CupertinoIcons.crop,
-                    color: CupertinoColors.systemGrey6,
-                    size: 24,
-                  ),
+                  child: const Icon(CupertinoIcons.crop,
+                      color: CupertinoColors.systemGrey6, size: 24),
                 ),
                 CupertinoButton(
                   padding: EdgeInsets.zero,
                   onPressed: _openSettingsScreen,
-                  child: const Icon(
-                    CupertinoIcons.gear_solid,
-                    color: CupertinoColors.systemGrey6,
-                    size: 24,
-                  ),
+                  child: const Icon(CupertinoIcons.gear_solid,
+                      color: CupertinoColors.systemGrey6, size: 24),
                 ),
                 CupertinoButton(
                   padding: EdgeInsets.zero,
@@ -671,21 +607,16 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                     widget.serverManager.shutdownServer();
                     windowManager.close();
                   },
-                  child: const Icon(
-                    CupertinoIcons.xmark_circle_fill,
-                    color: CupertinoColors.systemRed,
-                    size: 24,
-                  ),
+                  child: const Icon(CupertinoIcons.xmark_circle_fill,
+                      color: CupertinoColors.systemRed, size: 24),
                 ),
                 const SizedBox(width: 8),
               ],
             ),
-            // 타이머와 텍스트 영역
             Expanded(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  // 타이머
                   Container(
                     alignment: Alignment.center,
                     child: Row(
@@ -696,9 +627,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                           child: CupertinoButton(
                             padding: EdgeInsets.zero,
                             onPressed: () {
-                              if (!isConfigLoaded) {
-                                return;
-                              }
+                              if (!isConfigLoaded) return;
                               if (!isRoiSet) {
                                 _openRectSelectScreen();
                                 return;
@@ -749,7 +678,6 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                       ],
                     ),
                   ),
-                  // EXP 텍스트 영역 (동적 크기 적용)
                   Flexible(
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
@@ -757,7 +685,6 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // 메인 EXP 텍스트
                           Text(
                             '${numberFormat.format(totalExp)} [${totalPercentage.toStringAsFixed(2)}%]',
                             style: GoogleFonts.notoSans(
@@ -770,7 +697,6 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                             ),
                           ),
                           const SizedBox(height: 2),
-                          // 평균 EXP 텍스트 (메인보다 2:1 작게)
                           if (showAverage != Duration.zero)
                             Text(
                               '${numberFormat.format(averageExp)} [${averagePercentage.toStringAsFixed(2)}%] / ${showAverage.inMinutes}분',
@@ -788,7 +714,6 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  // 메소 영역 (동적 크기 적용)
                   if (showMeso)
                     Flexible(
                       child: FittedBox(
@@ -797,7 +722,6 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            // 메인 메소 텍스트
                             Text(
                               '${numberFormat.format(totalMeso)} 메소',
                               style: GoogleFonts.notoSans(
@@ -810,7 +734,6 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                               ),
                             ),
                             const SizedBox(height: 2),
-                            // 평균 메소 텍스트 (메인보다 2:1 작게)
                             if (showMeso && showAverage != Duration.zero)
                               Text(
                                 '${numberFormat.format(averageMeso)} 메소 / ${showAverage.inMinutes}분',
