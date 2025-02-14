@@ -77,22 +77,27 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   @override
   void initState() {
     super.initState();
+    safeLog("initState() 호출됨");
     windowManager.addListener(this);
     _audioPlayer.setVolume(0.5);
-    // 첫 프레임 렌더링 이후에 초기화 작업 시작
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      safeLog("Post-frame callback 시작");
       _initializeApp();
     });
   }
 
   /// 앱 초기화: exp 데이터 로드와 config 로드를 순차적으로 실행
   Future<void> _initializeApp() async {
+    safeLog("초기 exp 데이터 로드 시작");
     try {
       await expDataLoader.loadExpData();
+      safeLog("exp 데이터 로드 완료");
     } catch (e) {
       safeLog("Error loading exp data: $e");
     }
+    safeLog("config 로드 시작");
     await _loadConfig();
+    safeLog("config 로드 완료");
   }
 
   @override
@@ -174,6 +179,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     try {
       final file = await _getConfigFile();
       String content = await file.readAsString();
+      safeLog("Config 파일 내용: $content");
       Map<String, dynamic> config;
       try {
         config = jsonDecode(content);
@@ -232,7 +238,9 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   /// _handleServerInitialization: 서버 헬스 체크와 ROI 전송을 순차적으로 실행
   Future<void> _handleServerInitialization() async {
     try {
+      safeLog("서버 헬스 체크 시작");
       await _waitForServerReady();
+      safeLog("서버 헬스 체크 완료, ROI 전송 시작");
       await sendROIToServer();
       safeLog("ROI Sent to Server");
     } catch (e) {
@@ -265,6 +273,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
         safeLog("Timeout: 서버가 준비되지 않았습니다.");
         exit(1);
       }
+      safeLog("서버 준비 대기 중...");
       await Future.delayed(Duration(milliseconds: 500));
     }
   }
@@ -532,6 +541,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
 
   @override
   Widget build(BuildContext context) {
+    safeLog("build() 호출됨");
     return CupertinoPageScaffold(
       backgroundColor: isRunning
           ? CupertinoColors.darkBackgroundGray.withAlpha(200)
