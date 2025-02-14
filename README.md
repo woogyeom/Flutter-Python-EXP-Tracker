@@ -31,12 +31,14 @@
 - [url_launcher](https://pub.dev/packages/url_launcher): 외부 URL 열기 기능 제공.
 - [intl](https://pub.dev/packages/intl): 숫자의 형식을 국제화된 방식으로 포맷.
 - [audioplayers](https://pub.dev/packages/audioplayers): 오디오 파일을 재생할 수 있는 기능 제공.
+- [synchronized](https://pub.dev/packages/synchronized): 한 번에 하나의 비동기 작업만 실행되도록 제어하는 기능 제공(로깅에 사용).
 
 **Python**:
 - [FastAPI](https://fastapi.tiangolo.com/): 고성능 비동기 웹 프레임워크로, API 서버 및 OCR 데이터 제공.
 - [pytesseract](https://pypi.org/project/pytesseract/): Tesseract OCR 엔진으로 이미지에서 텍스트 추출.
 - [mss](https://pypi.org/project/mss/): 화면 캡처를 통해 ROI 영역 이미지를 빠르게 저장.
 - [uvicorn](https://www.uvicorn.org/): ASGI 서버로 FastAPI를 실행.
+- [contextlib](https://docs.python.org/3/library/contextlib.html): with 문 관련 컨텍스트 관리자를 쉽게 구현하고 활용할 수 있도록 돕는 유틸리티 제공(로깅에 사용).
 
 ---
 

@@ -74,7 +74,9 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     windowManager.addListener(this);
     expDataLoader.loadExpData();
     _audioPlayer.setVolume(0.5);
-    _loadConfig();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadConfig();
+    });
   }
 
   @override

@@ -13,6 +13,13 @@ from logging.handlers import TimedRotatingFileHandler
 from pydantic import BaseModel
 from typing import List, Optional
 from contextlib import asynccontextmanager
+import sys
+
+if sys.stdout is None:
+    sys.stdout = sys.__stdout__
+if sys.stderr is None:
+    sys.stderr = sys.__stderr__
+
 
 if getattr(sys, 'frozen', False):
     base_path = sys._MEIPASS
@@ -62,8 +69,8 @@ async def lifespan(app: FastAPI):
     logger.info("서버 시작")
     yield
     logger.info("서버 종료 중: 로그 파일 저장 완료")
-    if os.path.exists("server_logs.txt"):
-        logger.info("로그 파일이 저장되었습니다: server_logs.txt")
+    if os.path.exists("server_log.txt"):
+        logger.info("로그 파일이 저장되었습니다: server_log.txt")
     logger.info("서버 종료 작업 완료")
     logging.shutdown()
 
@@ -75,6 +82,7 @@ roi_data = {"level": None, "exp": None, "meso": None}
 
 @app.get("/health")
 async def health():
+    logger.info("Health check 요청 수신")
     return {"status": "ok"}
 
 @app.post("/set_roi")
