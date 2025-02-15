@@ -9,7 +9,7 @@ class ServerManager {
 
     // 서버가 이미 실행 중인지 확인
     try {
-      final response = await http.get(Uri.parse('http://127.0.0.1:1108'));
+      final response = await http.get(Uri.parse('http://127.0.0.1:5000'));
       if (response.statusCode == 200) {
         safeLog("FastAPI 서버가 이미 실행 중입니다.");
         return;
@@ -33,7 +33,7 @@ class ServerManager {
     try {
       safeLog("Shutting down FastAPI server via shutdown endpoint...");
       final response =
-          await http.get(Uri.parse('http://127.0.0.1:1108/shutdown'));
+          await http.get(Uri.parse('http://127.0.0.1:5000/shutdown'));
       safeLog("Shutdown response: ${response.body}");
     } catch (e) {
       safeLog("Error shutting down the server: $e");

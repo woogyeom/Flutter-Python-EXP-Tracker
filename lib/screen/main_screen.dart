@@ -34,10 +34,8 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
 
   bool isRunning = false;
   Duration showAverage = Duration.zero;
-  bool isServerRunning = false;
-  bool isErrorShown = false;
+  bool isInitializing = true;
   bool isRoiSet = false;
-  bool isConfigLoaded = false;
   bool showMeso = false;
 
   String timerText = "00:00:00";
@@ -77,7 +75,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   @override
   void initState() {
     super.initState();
-    safeLog("initState() 호출됨");
+    safeLog("initState() 호출됨, 버전: $appVersion");
     windowManager.addListener(this);
     _audioPlayer.setVolume(0.5);
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -88,16 +86,24 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
 
   /// 앱 초기화: exp 데이터 로드와 config 로드를 순차적으로 실행
   Future<void> _initializeApp() async {
-    safeLog("초기 exp 데이터 로드 시작");
     try {
+      // 1) exp 데이터 로드
       await expDataLoader.loadExpData();
-      safeLog("exp 데이터 로드 완료");
-    } catch (e) {
-      safeLog("Error loading exp data: $e");
+
+      // 2) config 로드
+      await _loadConfig(); // config 파일 읽고, levelRect/expRect 세팅
+
+      // 3) 서버 헬스체크 & ROI 전송
+      await _handleServerInitialization();
+    } catch (e, stack) {
+      safeLog("초기화 중 오류 발생: $e\n$stack");
+      exit(1); // 혹은 에러처리
+    } finally {
+      // 모든 초기화가 끝나면 로딩 상태 해제
+      setState(() {
+        isInitializing = false;
+      });
     }
-    safeLog("config 로드 시작");
-    await _loadConfig();
-    safeLog("config 로드 완료");
   }
 
   @override
@@ -191,15 +197,13 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
 
       if (config.isEmpty) {
         safeLog("Empty config, skipping further config load.");
-        _refreshUI(() {
-          isConfigLoaded = true;
-        });
         return;
       }
 
-      _refreshUI(() {
+      setState(() {
+        // config를 읽어 상태값에 반영
         if (config["levelRect"] != null && config["levelRect"] is Map) {
-          Map<String, dynamic> rect = config["levelRect"];
+          final rect = config["levelRect"] as Map<String, dynamic>;
           levelRect = Rect.fromLTRB(
             (rect["left"] ?? 0).toDouble(),
             (rect["top"] ?? 0).toDouble(),
@@ -208,7 +212,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
           );
         }
         if (config["expRect"] != null && config["expRect"] is Map) {
-          Map<String, dynamic> rect = config["expRect"];
+          final rect = config["expRect"] as Map<String, dynamic>;
           expRect = Rect.fromLTRB(
             (rect["left"] ?? 0).toDouble(),
             (rect["top"] ?? 0).toDouble(),
@@ -219,33 +223,45 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
         timerEndTime = Duration(seconds: config["timerEndTime"] ?? 0);
         _audioPlayer.setVolume(config["volume"] ?? 0.5);
         showAverage = Duration(seconds: config["showAverage"] ?? 0);
-        isConfigLoaded = true;
       });
       safeLog("Config loaded: $config");
-
-      if (levelRect != null && expRect != null) {
-        await _handleServerInitialization();
-      } else {
-        safeLog("No ROI data");
-      }
     } catch (e) {
       safeLog("Error loading config: $e");
-      // 서버 연결 실패 등 치명적인 오류 발생 시 앱 종료
       exit(1);
     }
   }
 
   /// _handleServerInitialization: 서버 헬스 체크와 ROI 전송을 순차적으로 실행
   Future<void> _handleServerInitialization() async {
+    // 1) 초기화 시작: 로딩 상태로 전환
+    setState(() {
+      isInitializing = true;
+    });
+
     try {
       safeLog("서버 헬스 체크 시작");
-      await _waitForServerReady();
+      await _waitForServerReady(); // /health 확인
       safeLog("서버 헬스 체크 완료, ROI 전송 시작");
-      await sendROIToServer();
-      safeLog("ROI Sent to Server");
-    } catch (e) {
-      safeLog("Server initialization error: $e");
+
+      // 2) ROI가 있으면 서버에 전송
+      if (levelRect != null && expRect != null) {
+        await sendROIToServer();
+        setState(() {
+          isRoiSet = true; // 전송 성공 시점에 true
+        });
+        safeLog("ROI Sent to Server");
+      } else {
+        safeLog("No ROI data, skipping ROI send");
+        // isRoiSet = false
+      }
+    } catch (e, stack) {
+      safeLog("Server initialization error: $e\nStackTrace: $stack");
       exit(1);
+    } finally {
+      // 3) 초기화 종료: 로딩 상태 해제
+      setState(() {
+        isInitializing = false;
+      });
     }
   }
 
@@ -253,7 +269,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   Future<bool> checkServerReady() async {
     try {
       final response =
-          await http.get(Uri.parse("http://127.0.0.1:1108/health"));
+          await http.get(Uri.parse("http://127.0.0.1:5000/health"));
       return response.statusCode == 200;
     } catch (e) {
       return false;
@@ -265,16 +281,24 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   Future<void> _waitForServerReady({int timeoutSeconds = 30}) async {
     final startTime = DateTime.now();
     while (true) {
-      if (await checkServerReady()) {
-        safeLog("서버 준비 완료");
-        return;
-      }
-      if (DateTime.now().difference(startTime).inSeconds > timeoutSeconds) {
-        safeLog("Timeout: 서버가 준비되지 않았습니다.");
+      try {
+        if (await checkServerReady()) {
+          safeLog("서버 준비 완료");
+          return;
+        }
+        final elapsed = DateTime.now().difference(startTime).inSeconds;
+        if (elapsed > timeoutSeconds) {
+          safeLog("Timeout: 서버가 준비되지 않았습니다. ($elapsed 초 경과)");
+          exit(1);
+        }
+        safeLog("서버 준비 대기 중... ($elapsed 초 경과)");
+        await Future.delayed(Duration(milliseconds: 500));
+      } catch (e, stack) {
+        // 혹시 checkServerReady()에서 예외가 발생한다면 여기서 잡힐 것
+        safeLog("예외 발생 during waitForServerReady: $e\nStackTrace: $stack");
+        // exit(1)을 할지, 계속 재시도할지는 상황에 맞게 결정
         exit(1);
       }
-      safeLog("서버 준비 대기 중...");
-      await Future.delayed(Duration(milliseconds: 500));
     }
   }
 
@@ -284,7 +308,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
       safeLog("ROI 데이터가 설정되지 않았습니다.");
       return;
     }
-    final url = Uri.parse("http://127.0.0.1:1108/set_roi");
+    final url = Uri.parse("http://127.0.0.1:5000/set_roi");
     Map<String, dynamic> roiData = {
       "level": [
         levelRect!.left,
@@ -323,7 +347,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   Future<void> fetchAndDisplayExpData() async {
     try {
       final response = await http
-          .get(Uri.parse('http://127.0.0.1:1108/extract_exp_and_level'));
+          .get(Uri.parse('http://127.0.0.1:5000/extract_exp_and_level'));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         int exp = data['exp'];
@@ -372,7 +396,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   Future<void> fetchAndDisplayMesoData() async {
     try {
       final response =
-          await http.get(Uri.parse('http://127.0.0.1:1108/extract_meso'));
+          await http.get(Uri.parse('http://127.0.0.1:5000/extract_meso'));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         int meso = data['meso'];
@@ -636,30 +660,35 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                           width: 80,
                           child: CupertinoButton(
                             padding: EdgeInsets.zero,
-                            onPressed: () {
-                              if (!isConfigLoaded) return;
-                              if (!isRoiSet) {
-                                _openRectSelectScreen();
-                                return;
-                              }
-                              if (!isRunning && _elapsedTime == Duration.zero) {
-                                _startTimer();
-                              } else if (isRunning) {
-                                _stopTimer();
-                              } else {
-                                _resetTimer();
-                              }
-                            },
-                            color: !isRoiSet
+                            onPressed: isInitializing
+                                ? null // 초기화 중엔 버튼 비활성화
+                                : () {
+                                    if (!isRoiSet) {
+                                      _openRectSelectScreen();
+                                      return;
+                                    }
+                                    if (!isRunning &&
+                                        _elapsedTime == Duration.zero) {
+                                      _startTimer();
+                                    } else if (isRunning) {
+                                      _stopTimer();
+                                    } else {
+                                      _resetTimer();
+                                    }
+                                  },
+                            color: isInitializing
                                 ? CupertinoColors.systemGrey
-                                : isRunning
-                                    ? CupertinoColors.systemRed
-                                    : _elapsedTime == Duration.zero
-                                        ? CupertinoColors.systemGreen
-                                        : CupertinoColors.systemBlue,
+                                : !isRoiSet
+                                    ? CupertinoColors.systemGrey
+                                    : isRunning
+                                        ? CupertinoColors.systemRed
+                                        : _elapsedTime == Duration.zero
+                                            ? CupertinoColors.systemGreen
+                                            : CupertinoColors.systemBlue,
                             borderRadius: BorderRadius.circular(12),
-                            child: !isConfigLoaded
-                                ? const CupertinoActivityIndicator()
+                            child: isInitializing
+                                ? const CupertinoActivityIndicator(
+                                    color: CupertinoColors.white)
                                 : Icon(
                                     !isRoiSet
                                         ? CupertinoIcons.crop
