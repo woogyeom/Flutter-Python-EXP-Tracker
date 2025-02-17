@@ -96,7 +96,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
       // 3) 서버 헬스체크 & ROI 전송
       await _handleServerInitialization();
     } catch (e, stack) {
-      safeLog("초기화 중 오류 발생: $e\n$stack");
+      await safeLog("초기화 중 오류 발생: $e\n$stack");
       exit(1); // 혹은 에러처리
     } finally {
       // 모든 초기화가 끝나면 로딩 상태 해제
@@ -226,7 +226,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
       });
       safeLog("Config loaded: $config");
     } catch (e) {
-      safeLog("Error loading config: $e");
+      await safeLog("Error loading config: $e");
       exit(1);
     }
   }
@@ -255,7 +255,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
         // isRoiSet = false
       }
     } catch (e, stack) {
-      safeLog("Server initialization error: $e\nStackTrace: $stack");
+      await safeLog("Server initialization error: $e\nStackTrace: $stack");
       exit(1);
     } finally {
       // 3) 초기화 종료: 로딩 상태 해제
@@ -288,14 +288,15 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
         }
         final elapsed = DateTime.now().difference(startTime).inSeconds;
         if (elapsed > timeoutSeconds) {
-          safeLog("Timeout: 서버가 준비되지 않았습니다. ($elapsed 초 경과)");
+          await safeLog("Timeout: 서버가 준비되지 않았습니다. ($elapsed 초 경과)");
           exit(1);
         }
         safeLog("서버 준비 대기 중... ($elapsed 초 경과)");
         await Future.delayed(Duration(milliseconds: 500));
       } catch (e, stack) {
         // 혹시 checkServerReady()에서 예외가 발생한다면 여기서 잡힐 것
-        safeLog("예외 발생 during waitForServerReady: $e\nStackTrace: $stack");
+        await safeLog(
+            "예외 발생 during waitForServerReady: $e\nStackTrace: $stack");
         // exit(1)을 할지, 계속 재시도할지는 상황에 맞게 결정
         exit(1);
       }
