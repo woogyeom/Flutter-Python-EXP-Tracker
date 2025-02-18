@@ -638,8 +638,8 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                 ),
                 CupertinoButton(
                   padding: EdgeInsets.zero,
-                  onPressed: () {
-                    widget.serverManager.shutdownServer();
+                  onPressed: () async {
+                    await widget.serverManager.shutdownServer();
                     windowManager.close();
                   },
                   child: const Icon(CupertinoIcons.xmark_circle_fill,
