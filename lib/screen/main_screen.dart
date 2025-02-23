@@ -59,6 +59,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   int expBeforeLevelUp = 0;
   double percentageBeforeLevelUp = 0.00;
 
+  Duration updateInterval = Duration(seconds: 1);
   Duration timerEndTime = Duration.zero;
 
   Rect? levelRect;
@@ -167,6 +168,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
               "bottom": expRect!.bottom,
             }
           : null,
+      "updateInterval": updateInterval.inSeconds,
       "timerEndTime": timerEndTime.inSeconds,
       "volume": _audioPlayer.volume,
       "showAverage": showAverage.inSeconds,
@@ -220,6 +222,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
             (rect["bottom"] ?? 0).toDouble(),
           );
         }
+        updateInterval = Duration(seconds: config["updateInterval"] ?? 1);
         timerEndTime = Duration(seconds: config["timerEndTime"] ?? 0);
         _audioPlayer.setVolume(config["volume"] ?? 0.5);
         showAverage = Duration(seconds: config["showAverage"] ?? 0);
@@ -423,12 +426,24 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     _refreshUI(() {
       isRunning = true;
     });
+
+    // initial 입력
+    await fetchAndDisplayExpData();
+    if (showMeso) {
+      await fetchAndDisplayMesoData();
+    }
+
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) async {
       _refreshUI(() {
         _elapsedTime += const Duration(seconds: 1);
       });
-      fetchAndDisplayExpData();
-      if (showMeso) fetchAndDisplayMesoData();
+
+      // updateInterval 반영
+      if (_elapsedTime.inSeconds % updateInterval.inSeconds == 0) {
+        fetchAndDisplayExpData();
+        if (showMeso) fetchAndDisplayMesoData();
+      }
+
       if (timerEndTime != Duration.zero && _elapsedTime >= timerEndTime) {
         _audioPlayer.play(AssetSource('timer_alarm.mp3'));
         _stopTimer();
@@ -483,6 +498,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) => SettingsScreen(
           isRunning: isRunning,
+          updateInterval: updateInterval,
           timerEndTime: timerEndTime,
           showAverage: showAverage,
           audioPlayer: _audioPlayer,
@@ -494,6 +510,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     );
     if (result != null) {
       _refreshUI(() {
+        updateInterval = result['updateInterval'];
         timerEndTime = result['timerEndTime'];
         showAverage = result['showAverage'];
         showMeso = result['showMeso'];
@@ -718,6 +735,8 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                       ],
                     ),
                   ),
+
+                  // 경험치 UI
                   Flexible(
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
@@ -726,7 +745,9 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            '${numberFormat.format(totalExp)} [${totalPercentage.toStringAsFixed(2)}%]',
+                            initialExp == 0
+                                ? "-- [--%]" // 초기 값이 설정되기 전에는 '--' 표시
+                                : '${numberFormat.format(totalExp)} [${totalPercentage.toStringAsFixed(2)}%]',
                             style: GoogleFonts.notoSans(
                               textStyle: const TextStyle(
                                 height: 1.2,
@@ -739,7 +760,9 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                           const SizedBox(height: 2),
                           if (showAverage != Duration.zero)
                             Text(
-                              '${numberFormat.format(averageExp)} [${averagePercentage.toStringAsFixed(2)}%] / ${showAverage.inMinutes}분',
+                              initialExp == 0
+                                  ? "-- [--%] / ${showAverage.inMinutes}분" // 평균값도 '--' 표시
+                                  : '${numberFormat.format(averageExp)} [${averagePercentage.toStringAsFixed(2)}%] / ${showAverage.inMinutes}분',
                               style: GoogleFonts.notoSans(
                                 textStyle: const TextStyle(
                                   height: 1.2,
@@ -753,7 +776,10 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                       ),
                     ),
                   ),
+
                   const SizedBox(height: 4),
+
+                  // 메소 UI
                   if (showMeso)
                     Flexible(
                       child: FittedBox(
@@ -763,7 +789,9 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              '${numberFormat.format(totalMeso)} 메소',
+                              initialMeso == 0
+                                  ? "-- 메소" // 초기 값이 설정되기 전에는 '--' 표시
+                                  : '${numberFormat.format(totalMeso)} 메소',
                               style: GoogleFonts.notoSans(
                                 textStyle: const TextStyle(
                                   height: 1.2,
@@ -776,7 +804,9 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                             const SizedBox(height: 2),
                             if (showMeso && showAverage != Duration.zero)
                               Text(
-                                '${numberFormat.format(averageMeso)} 메소 / ${showAverage.inMinutes}분',
+                                initialMeso == 0
+                                    ? "-- 메소 / ${showAverage.inMinutes}분" // 평균값도 '--' 표시
+                                    : '${numberFormat.format(averageMeso)} 메소 / ${showAverage.inMinutes}분',
                                 style: GoogleFonts.notoSans(
                                   textStyle: const TextStyle(
                                     height: 1.2,
@@ -790,6 +820,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                         ),
                       ),
                     ),
+
                   const SizedBox(height: 14),
                 ],
               ),

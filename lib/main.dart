@@ -7,7 +7,7 @@ import 'package:flutter_exp_timer/screen/main_screen.dart';
 import 'package:flutter_exp_timer/server_manager.dart'; // 서버 매니저 불러오기
 import 'package:flutter_exp_timer/log.dart'; // safeLog를 사용하기 위함
 
-const String appVersion = "1.3.5";
+const String appVersion = "1.3.6";
 const Size appSize = Size(400, 200);
 
 void main() {

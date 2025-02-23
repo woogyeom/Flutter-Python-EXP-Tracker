@@ -7,6 +7,7 @@ import 'package:flutter_exp_timer/main.dart';
 
 class SettingsScreen extends StatefulWidget {
   final bool isRunning;
+  final Duration updateInterval;
   final Duration timerEndTime;
   final Duration showAverage;
   final AudioPlayer audioPlayer;
@@ -15,6 +16,7 @@ class SettingsScreen extends StatefulWidget {
   const SettingsScreen({
     Key? key,
     required this.isRunning,
+    required this.updateInterval,
     required this.timerEndTime,
     required this.showAverage,
     required this.audioPlayer,
@@ -26,6 +28,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
+  int _selectedOption0 = 0;
   int _selectedOption1 = 0;
   int _selectedOption2 = 0;
   double currentVolume = 0.5;
@@ -34,13 +37,15 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
 
   @override
   void initState() {
+    _selectedOption0 =
+        _getSelectedUpdateIntervalFromDuration(widget.updateInterval);
     _selectedOption1 = _getSelectedOptionFromDuration(widget.timerEndTime);
     _selectedOption2 = _getSelectedOptionFromDuration(widget.showAverage);
     _audioPlayer = widget.audioPlayer;
     currentVolume = _audioPlayer.volume;
     showMeso = widget.showMeso;
 
-    windowManager.setSize(Size(appSize.width, 200));
+    windowManager.setSize(Size(appSize.width, 260));
 
     super.initState();
   }
@@ -54,6 +59,16 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
     super.dispose();
   }
 
+  /// 업데이트 주기 Duration 값을 각 옵션에 해당하는 정수로 변환합니다.
+  int _getSelectedUpdateIntervalFromDuration(Duration duration) {
+    if (duration == Duration(seconds: 1)) return 0;
+    if (duration == const Duration(seconds: 5)) return 1;
+    if (duration == const Duration(seconds: 15)) return 2;
+    if (duration == const Duration(seconds: 30)) return 3;
+    if (duration == const Duration(minutes: 1)) return 4;
+    return 0;
+  }
+
   /// Duration 값을 각 옵션에 해당하는 정수로 변환합니다.
   int _getSelectedOptionFromDuration(Duration duration) {
     if (duration == Duration.zero) return 0; // 무한 또는 없음
@@ -62,6 +77,22 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
     if (duration == const Duration(minutes: 30)) return 3;
     if (duration == const Duration(hours: 1)) return 4;
     return 0;
+  }
+
+  /// 선택된 옵션 값에 따라 업데이트 주기기 Duration을 반환합니다.
+  Duration _durationFromSelectedUpdateInterval(int option) {
+    switch (option) {
+      case 1:
+        return const Duration(seconds: 5);
+      case 2:
+        return const Duration(seconds: 15);
+      case 3:
+        return const Duration(seconds: 30);
+      case 4:
+        return const Duration(minutes: 1);
+      default:
+        return Duration(seconds: 1); // 무한 또는 없음
+    }
   }
 
   /// 선택된 옵션 값에 따라 Duration을 반환합니다.
@@ -82,9 +113,12 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
 
   /// 설정 화면 종료 후, 선택된 옵션을 반환합니다.
   Future<void> _closeSettings() async {
+    final selectedDuration0 =
+        _durationFromSelectedUpdateInterval(_selectedOption0);
     final selectedDuration1 = _durationFromSelectedOption(_selectedOption1);
     final selectedDuration2 = _durationFromSelectedOption(_selectedOption2);
     Navigator.pop(context, {
+      'updateInterval': selectedDuration0,
       'timerEndTime': selectedDuration1,
       'showAverage': selectedDuration2,
       'showMeso': showMeso,
@@ -133,6 +167,34 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // 업데이트 주기
+                    Text(
+                      "업데이트 주기",
+                      style: GoogleFonts.notoSans(
+                        textStyle: const TextStyle(
+                          color: CupertinoColors.systemGrey6,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                    CupertinoSegmentedControl<int>(
+                      padding: const EdgeInsets.all(4),
+                      unselectedColor: CupertinoColors.darkBackgroundGray,
+                      groupValue: _selectedOption0,
+                      children: {
+                        0: _buildSegment("1초"),
+                        1: _buildSegment("5초"),
+                        2: _buildSegment("15초"),
+                        3: _buildSegment("30초"),
+                        4: _buildSegment("1분"),
+                      },
+                      onValueChanged: (int value) {
+                        setState(() {
+                          _selectedOption0 = value;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 8),
                     // 타이머 시간 옵션
                     Row(
                       children: [
