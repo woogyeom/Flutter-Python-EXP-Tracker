@@ -97,6 +97,9 @@
 
 🔗 [MSVC 런타임 라이브러리 다운로드](https://learn.microsoft.com/ko-kr/cpp/windows/latest-supported-vc-redist?view=msvc-170)
 
+### 타이머 종료 효과음이 마음에 들지 않아요!
+앱이 설치된 폴더\data\flutter_assets\assets 경로에 timer_alarm.mp3 파일을 원하시는 효과음 파일로 교체하시면 됩니다.
+
 ---
 
 ## 개발자에게 문의 🛠️
