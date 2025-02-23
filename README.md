@@ -89,6 +89,16 @@ https://l.linklyhq.com/l/23vxv
 
 ---
 
+## 자주 묻는 질문 ❓
+
+### 앱을 실행시켜도 아무런 창이 뜨지 않아요!
+최신 버전의 **MSVC 런타임 라이브러리**가 설치되지 않았을 가능성이 있습니다.  
+아래 링크에서 최신 버전을 다운로드하여 설치한 후 다시 실행해주세요.
+
+🔗 [MSVC 런타임 라이브러리 다운로드](https://learn.microsoft.com/ko-kr/cpp/windows/latest-supported-vc-redist?view=msvc-170)
+
+---
+
 ## 개발자에게 문의
 
 버그 제보와 같은 문의는 아래 오픈 채팅 링크를 이용해주세요. 감사합니다.
@@ -118,6 +128,8 @@ https://open.kakao.com/o/sm79OLeh
 
 ## 업데이트 예정
 
++ 클라이언트 내에 ROI 초기 인식 상태 
++ 업데이트 주기 설정 옵션 추가
 + 맥os 지원
 
 ---
