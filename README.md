@@ -70,7 +70,7 @@
 + 게임을 저해상도로 플레이할 경우 인식 정확도가 저하될 수 있습니다.
 + 설정된 영역의 UI가 가려지지 않도록 주의해 주세요.
 + 게임 내에서 맵 이동이나 월드 이동이 빈번할 경우, 일시적으로 오인식이 발생할 수 있습니다.
-+ 본 앱은 C:\temp\MaplelandEXPTracker 경로에 임시 폴더 및 디버그용 이미지 파일을 생성합니다.
++ 본 앱은 C:\temp\MaplelandEXPTracker 경로에 임시 폴더를 생성하고, 디버그용 이미지 파일과 최근 3일 간의 로그 파일들을 저장합니다.
 
 ---
 
@@ -80,7 +80,7 @@
 
 ![image](https://github.com/user-attachments/assets/cf5267b0-cd66-46e7-bb4a-0debf55fc2f8)
 
-https://l.linklyhq.com/l/23vxv
+🔗 [앱 다운로드](https://l.linklyhq.com/l/23vxv)
 
 **현재 버전 1.3.5**
 
@@ -89,11 +89,33 @@ https://l.linklyhq.com/l/23vxv
 
 ---
 
-## 개발자에게 문의
+## 자주 묻는 질문 ❓
 
-버그 제보와 같은 문의는 아래 오픈 채팅 링크를 이용해주세요. 감사합니다.
+### 앱을 실행시켜도 아무런 창이 뜨지 않아요!
+최신 버전의 **MSVC 런타임 라이브러리**가 설치되지 않았을 가능성이 있습니다.  
+아래 링크에서 최신 버전을 다운로드하여 설치한 후 다시 실행해주세요.
 
-https://open.kakao.com/o/sm79OLeh
+🔗 [MSVC 런타임 라이브러리 다운로드](https://learn.microsoft.com/ko-kr/cpp/windows/latest-supported-vc-redist?view=msvc-170)
+
+### 타이머 종료 효과음이 마음에 들지 않아요!
+앱이 설치된 폴더\data\flutter_assets\assets 경로에 timer_alarm.mp3 파일을 원하시는 효과음 파일로 교체하시면 됩니다.
+
+---
+
+## 개발자에게 문의 🛠️
+
+버그 제보 및 기타 문의는 아래 오픈 채팅 링크를 이용해주세요.  
+🔗 [오픈 채팅방 바로가기](https://open.kakao.com/o/sm79OLeh)
+
+### 🔹 버그 제보 시  
+가능하면 **상황 설명과 함께 아래 로그 파일도 첨부**해 주세요.  
+더 정확한 확인과 해결에 도움이 됩니다.  
+
+📂 **로그 파일 위치**  
+`C:\temp\MaplelandEXPTracker\client_log`  
+`C:\temp\MaplelandEXPTracker\server_log`  
+
+감사합니다.
 
 ---
 
@@ -118,6 +140,8 @@ https://open.kakao.com/o/sm79OLeh
 
 ## 업데이트 예정
 
++ 클라이언트 내에 ROI 초기 인식 상태 
++ 업데이트 주기 설정 옵션 추가
 + 맥os 지원
 
 ---
