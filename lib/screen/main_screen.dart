@@ -742,7 +742,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                         children: [
                           Text(
                             initialExp == 0
-                                ? "-- [--%]"
+                                ? "초기 인식 필요"
                                 : '${numberFormat.format(totalExp)} [${totalPercentage.toStringAsFixed(2)}%]',
                             style: GoogleFonts.notoSans(
                               textStyle: const TextStyle(
@@ -757,7 +757,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                           if (showAverage != Duration.zero)
                             Text(
                               initialExp == 0
-                                  ? "-- [--%] / ${showAverage.inMinutes}분"
+                                  ? "초기 인식 필요"
                                   : '${numberFormat.format(averageExp)} [${averagePercentage.toStringAsFixed(2)}%] / ${showAverage.inMinutes}분',
                               style: GoogleFonts.notoSans(
                                 textStyle: const TextStyle(
@@ -784,7 +784,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                           children: [
                             Text(
                               initialMeso == 0
-                                  ? "-- 메소"
+                                  ? "초기 인식 필요"
                                   : '${numberFormat.format(totalMeso)} 메소',
                               style: GoogleFonts.notoSans(
                                 textStyle: const TextStyle(
@@ -799,7 +799,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                             if (showMeso && showAverage != Duration.zero)
                               Text(
                                 initialMeso == 0
-                                    ? "-- 메소 / ${showAverage.inMinutes}분"
+                                    ? "초기 인식 필요"
                                     : '${numberFormat.format(averageMeso)} 메소 / ${showAverage.inMinutes}분',
                                 style: GoogleFonts.notoSans(
                                   textStyle: const TextStyle(
