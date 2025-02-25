@@ -120,16 +120,21 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     _safeSetState(() {
       updateFn();
       timerText = _formatDuration(_elapsedTime);
-      if (showAverage != Duration.zero && _elapsedTime.inSeconds > 0) {
-        averageExp =
-            ((totalExp / _elapsedTime.inSeconds) * showAverage.inSeconds)
-                .floor();
-        averagePercentage =
-            (totalPercentage / _elapsedTime.inSeconds) * showAverage.inSeconds;
-        averageMeso =
-            ((totalMeso / _elapsedTime.inSeconds) * showAverage.inSeconds)
-                .floor();
-      }
+    });
+  }
+
+  void _calculateAvergae() {
+    if (showAverage == Duration.zero || _elapsedTime.inSeconds <= 0) {
+      return;
+    }
+    _safeSetState(() {
+      averageExp =
+          ((totalExp / _elapsedTime.inSeconds) * showAverage.inSeconds).floor();
+      averagePercentage =
+          (totalPercentage / _elapsedTime.inSeconds) * showAverage.inSeconds;
+      averageMeso =
+          ((totalMeso / _elapsedTime.inSeconds) * showAverage.inSeconds)
+              .floor();
     });
   }
 
@@ -442,6 +447,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
       if (_elapsedTime.inSeconds % updateInterval.inSeconds == 0) {
         fetchAndDisplayExpData();
         if (showMeso) fetchAndDisplayMesoData();
+        _calculateAvergae();
       }
 
       if (timerEndTime != Duration.zero && _elapsedTime >= timerEndTime) {
@@ -515,6 +521,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
         showAverage = result['showAverage'];
         showMeso = result['showMeso'];
       });
+      _calculateAvergae();
       _saveConfig();
     }
   }
