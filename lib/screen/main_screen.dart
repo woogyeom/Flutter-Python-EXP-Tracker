@@ -35,11 +35,12 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   bool isRunning = false;
   bool isInitializing = true;
   bool isRoiSet = false;
+  bool isInitValueInserted = false;
   bool showMeso = false;
 
   // UI 관련 시간 설정
-  Duration showAverage = Duration.zero; // 평균 계산 대상 시간(예: 5분)
-  Duration updateInterval = const Duration(seconds: 5);
+  Duration showAverage = Duration.zero;
+  Duration updateInterval = const Duration(seconds: 1);
   Duration timerEndTime = Duration.zero;
   Duration _elapsedTime = Duration.zero;
 
@@ -352,7 +353,9 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
             initialLevel = level;
             initialExp = exp;
             initialPercentage = percentage;
+            isInitValueInserted = true;
           } else {
+            // 레벨 업
             if (level > lastLevel &&
                 ((level - lastLevel) == 1 || (level - lastLevel) == 2)) {
               int levelUpExp = _expDataLoader.getExpForLevel(lastLevel);
@@ -741,8 +744,8 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            initialExp == 0
-                                ? "초기 인식 필요"
+                            !isInitValueInserted
+                                ? '? [?.??%]'
                                 : '${numberFormat.format(totalExp)} [${totalPercentage.toStringAsFixed(2)}%]',
                             style: GoogleFonts.notoSans(
                               textStyle: const TextStyle(
@@ -756,8 +759,8 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                           const SizedBox(height: 2),
                           if (showAverage != Duration.zero)
                             Text(
-                              initialExp == 0
-                                  ? "초기 인식 필요"
+                              !isInitValueInserted
+                                  ? '? [?.??%] / ${showAverage.inMinutes}분'
                                   : '${numberFormat.format(averageExp)} [${averagePercentage.toStringAsFixed(2)}%] / ${showAverage.inMinutes}분',
                               style: GoogleFonts.notoSans(
                                 textStyle: const TextStyle(
@@ -783,8 +786,8 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              initialMeso == 0
-                                  ? "초기 인식 필요"
+                              !isInitValueInserted
+                                  ? '???? 메소'
                                   : '${numberFormat.format(totalMeso)} 메소',
                               style: GoogleFonts.notoSans(
                                 textStyle: const TextStyle(
@@ -798,8 +801,8 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                             const SizedBox(height: 2),
                             if (showMeso && showAverage != Duration.zero)
                               Text(
-                                initialMeso == 0
-                                    ? "초기 인식 필요"
+                                !isInitValueInserted
+                                    ? '???? 메소 / ${showAverage.inMinutes}분'
                                     : '${numberFormat.format(averageMeso)} 메소 / ${showAverage.inMinutes}분',
                                 style: GoogleFonts.notoSans(
                                   textStyle: const TextStyle(
