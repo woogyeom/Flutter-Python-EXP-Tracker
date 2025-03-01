@@ -571,7 +571,6 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
 
   @override
   Widget build(BuildContext context) {
-    safeLog("build() 호출됨");
     return CupertinoPageScaffold(
       backgroundColor: isRunning
           ? CupertinoColors.darkBackgroundGray.withAlpha(200)
