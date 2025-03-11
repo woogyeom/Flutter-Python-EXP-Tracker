@@ -32,6 +32,7 @@
 - [intl](https://pub.dev/packages/intl): 숫자의 형식을 국제화된 방식으로 포맷.
 - [audioplayers](https://pub.dev/packages/audioplayers): 오디오 파일을 재생할 수 있는 기능 제공.
 - [synchronized](https://pub.dev/packages/synchronized): 한 번에 하나의 비동기 작업만 실행되도록 제어하는 기능 제공(로깅에 사용).
+- [hotkey_manager](https://pub.dev/packages/hotkey_manager): 시스템 와이드 핫키 기능 제공.
 
 **Python**:
 - [FastAPI](https://fastapi.tiangolo.com/): 고성능 비동기 웹 프레임워크로, API 서버 및 OCR 데이터 제공.
@@ -82,9 +83,9 @@
 
 🔗 [앱 다운로드](https://l.linklyhq.com/l/23vxv)
 
-**현재 버전 1.4.2**
+**현재 버전 1.5.0**
 
-**현재 메소 측정 기능은 시범 운영 중이며, 인식 정확도가 불안정할 수 있습니다.**
+**현재 비트맵 폰트는 지원되지 않습니다.**
 
 ---
 
@@ -137,12 +138,12 @@
 + Ver 1.3.6: 업데이트 주기 설정 옵션 추가, 초기 경험치 및 메소 데이터가 인식되기 전까지 --로 표시
 + Ver 1.4.1: 업데이트 주기에만 평균값 계산하게 변경, 전체 코드 구조 개선, 초기 인식 이전 수치 ??로 표시
 + Ver 1.4.2: 레벨 업 시 수치가 ??로 표시되는 오류 수정
++ Ver 1.5.0: 종료 전 위치 기억, 타이머 조작 핫키 추가, 메소 인식 정확도 향상
 
 ---
 
 ## 업데이트 예정
 
-+ 메소 수치 인식 정확도 향상
 + 인벤토리 창이 열려있는지 인식
 + 맥os 지원
 

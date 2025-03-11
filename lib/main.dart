@@ -6,8 +6,9 @@ import 'package:window_manager/window_manager.dart';
 import 'package:flutter_exp_timer/screen/main_screen.dart';
 import 'package:flutter_exp_timer/server_manager.dart'; // 서버 매니저 불러오기
 import 'package:flutter_exp_timer/log.dart'; // safeLog를 사용하기 위함
+import 'package:hotkey_manager/hotkey_manager.dart';
 
-const String appVersion = "1.4.2";
+const String appVersion = "1.5.0";
 const Size appSize = Size(400, 200);
 
 void main() {
@@ -22,6 +23,7 @@ void main() {
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
     await windowManager.ensureInitialized();
+    await hotKeyManager.unregisterAll();
 
     ServerManager serverManager = ServerManager();
     await serverManager.startServer();
@@ -42,11 +44,10 @@ void main() {
 
     windowManager.waitUntilReadyToShow(windowOptions, () async {
       await windowManager.show();
+      safeLog("앱이 실행됩니다.");
+
+      runApp(MyApp(serverManager: serverManager));
     });
-
-    safeLog("앱이 실행됩니다.");
-
-    runApp(MyApp(serverManager: serverManager));
   }, (error, stackTrace) {
     // 이곳에서 전역 예외 처리
     safeLog("Unhandled error: $error\nStack: $stackTrace");
@@ -61,7 +62,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CupertinoApp(
-      debugShowCheckedModeBanner: false,
+      // debugShowCheckedModeBanner: false,
       theme: const CupertinoThemeData(
         brightness: Brightness.light,
       ),

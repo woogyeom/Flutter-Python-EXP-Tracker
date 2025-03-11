@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_exp_timer/exp_data_loader.dart';
 import 'package:flutter_exp_timer/log.dart';
 import 'package:flutter_exp_timer/main.dart';
@@ -16,6 +17,7 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:hotkey_manager/hotkey_manager.dart';
 
 class MainScreen extends StatefulWidget {
   final ServerManager serverManager;
@@ -72,6 +74,12 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
 
   Timer? _timer;
 
+  final HotKey _hotKey = HotKey(
+    key: PhysicalKeyboardKey.backquote,
+    modifiers: [HotKeyModifier.capsLock],
+    scope: HotKeyScope.system,
+  );
+
   // ============================================================
   // HELPER METHODS
   // ============================================================
@@ -118,7 +126,12 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
 
   Future<void> _saveConfig() async {
     final file = await _getConfigFile();
+    final Offset position = await windowManager.getPosition();
     Map<String, dynamic> config = {
+      "position": {
+        "x": position.dx,
+        "y": position.dy,
+      },
       "levelRect": levelRect != null
           ? {
               "left": levelRect!.left,
@@ -165,6 +178,17 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
         safeLog("Empty config, skipping further config load.");
         return;
       }
+
+      if (config["position"] != null && config["position"] is Map) {
+        final pos = config["position"] as Map<String, dynamic>;
+        final newPos = Offset(
+          (pos["x"] ?? 0).toDouble(),
+          (pos["y"] ?? 0).toDouble(),
+        );
+        safeLog("Setting window position to: $newPos");
+        await windowManager.setPosition(newPos);
+      }
+
       _safeSetState(() {
         if (config["levelRect"] != null && config["levelRect"] is Map) {
           final rect = config["levelRect"] as Map<String, dynamic>;
@@ -404,6 +428,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     _safeSetState(() {
       isRunning = true;
     });
+
     // 초기 데이터 fetch 및 UI 업데이트
     await _updateData(fetchData: true);
 
@@ -552,6 +577,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
       safeLog("Post-frame callback 시작");
       _initializeApp();
     });
+    _registerHotKey();
   }
 
   @override
@@ -559,6 +585,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     safeLog('dispose');
     windowManager.removeListener(this);
     _timer?.cancel();
+    hotKeyManager.unregisterAll();
     super.dispose();
   }
 
@@ -569,11 +596,31 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     windowManager.close();
   }
 
+  void _registerHotKey() async {
+    await hotKeyManager.register(
+      _hotKey,
+      keyDownHandler: (hotKey) {
+        if (isRunning) {
+          _stopTimer();
+        } else {
+          if (!isRoiSet) {
+            return;
+          }
+          if (_elapsedTime == Duration.zero) {
+            _startTimer();
+          } else {
+            _resetTimer();
+          }
+        }
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
       backgroundColor: isRunning
-          ? CupertinoColors.darkBackgroundGray.withAlpha(200)
+          ? CupertinoColors.darkBackgroundGray.withAlpha(150)
           : CupertinoColors.darkBackgroundGray,
       child: DragToMoveArea(
         child: Column(
@@ -652,6 +699,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                 CupertinoButton(
                   padding: EdgeInsets.zero,
                   onPressed: () async {
+                    await _saveConfig();
                     await widget.serverManager.shutdownServer();
                     windowManager.close();
                   },

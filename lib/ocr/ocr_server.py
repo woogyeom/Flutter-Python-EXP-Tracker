@@ -245,7 +245,7 @@ async def extract_meso():
         meso_roi = capture_roi_with_mss(x1_m, y1_m, x2_m, y2_m)
         processed_meso = preprocess_roi(meso_roi)
 
-        custom_config = r'--oem 3 --psm 7'
+        custom_config = r'--oem 3 --psm 7 whitelist=0123456789'
         extracted_meso_text = pytesseract.image_to_string(
             processed_meso, lang='digits', config=custom_config
         )

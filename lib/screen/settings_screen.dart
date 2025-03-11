@@ -272,7 +272,6 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
                         });
                       },
                     ),
-                    // Options이 남은 공간을 모두 차지하도록 Expanded 사용 (원하는 경우 추가 위젯 배치 가능)
                     Expanded(child: Container()),
                   ],
                 ),
