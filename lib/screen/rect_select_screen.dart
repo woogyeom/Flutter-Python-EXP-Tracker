@@ -250,7 +250,7 @@ class _RectSelectScreenState extends State<RectSelectScreen> {
                         Text(
                           widget.isMeso
                               ? "메소 칸이 모두 포함되게"
-                              : (selectionStep == 0 ? "숫자만 포함되게" : "경험치 바까지"),
+                              : (selectionStep == 0 ? "LV. 부분까지" : "경험치 바까지"),
                           style: TextStyle(
                             color: CupertinoColors.systemYellow,
                             fontSize: 20,
