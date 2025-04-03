@@ -201,12 +201,13 @@ async def extract_exp_and_level():
         processed_lv = preprocess_roi(level_roi)
         processed_exp = preprocess_roi(exp_roi)
 
-        custom_config = r'--oem 3 --psm 7'
+        custom_lv_config = r'--oem 3 --psm 7 whitelist=0123456789'
+        custom_exp_config = r'--oem 3 --psm 7'
         extracted_lv_text = pytesseract.image_to_string(
-            processed_lv, lang='digits', config=custom_config
+            processed_lv, lang='digits', config=custom_lv_config
         )
         extracted_exp_text = pytesseract.image_to_string(
-            processed_exp, lang='digits', config=custom_config
+            processed_exp, lang='digits', config=custom_exp_config
         )
 
         safe_log(f"추출된 레벨 텍스트: {extracted_lv_text.strip()}")
