@@ -63,6 +63,10 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   int expBeforeLevelUp = 0;
   double percentageBeforeLevelUp = 0.0;
 
+  int storedExp = 0;
+  double storedPercentage = 0.0;
+  int storedMeso = 0;
+
   // ROI 영역
   Rect? levelRect;
   Rect? expRect;
@@ -352,8 +356,9 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
         // EXP 데이터 fetch
         final expResponse = await http
             .get(Uri.parse('http://127.0.0.1:5000/extract_exp_and_level'));
-        if (expResponse.statusCode != 200)
+        if (expResponse.statusCode != 200) {
           throw Exception("Failed to fetch EXP data");
+        }
         final expData = json.decode(expResponse.body);
         int exp = expData['exp'];
         double percentage = expData['percentage'];
@@ -389,9 +394,11 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
               initialPercentage = 0.0;
               lastLevel = level;
             }
-            totalExp = exp - initialExp + expBeforeLevelUp;
-            totalPercentage =
-                percentage - initialPercentage + percentageBeforeLevelUp;
+            totalExp = exp - initialExp + expBeforeLevelUp + storedExp;
+            totalPercentage = percentage -
+                initialPercentage +
+                percentageBeforeLevelUp +
+                storedPercentage;
             lastExp = exp;
             lastPercentage = percentage;
             lastLevel = level;
@@ -402,7 +409,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
             if (initialMeso == 0) {
               initialMeso = meso;
             } else {
-              totalMeso = meso - initialMeso;
+              totalMeso = meso - initialMeso + storedMeso;
             }
           }
           // 동시에 평균 계산 및 타이머 텍스트 업데이트
@@ -453,6 +460,13 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     await _updateData(fetchData: true);
     _safeSetState(() {
       isRunning = false;
+      initialExp = 0;
+      initialPercentage = 0;
+      initialLevel = 0;
+      initialMeso = 0;
+      storedExp = totalExp;
+      storedPercentage = totalPercentage;
+      storedMeso = totalMeso;
     });
     _timer?.cancel();
   }
@@ -461,20 +475,30 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     _safeSetState(() {
       isRunning = false;
       _elapsedTime = Duration.zero;
+
       initialExp = 0;
       initialPercentage = 0;
       initialLevel = 0;
       initialMeso = 0;
+
       lastExp = 0;
       lastPercentage = 0;
+
       totalExp = 0;
       totalPercentage = 0;
       totalMeso = 0;
+
       averageExp = 0;
       averagePercentage = 0;
       averageMeso = 0;
+
       expBeforeLevelUp = 0;
       percentageBeforeLevelUp = 0;
+
+      storedExp = 0;
+      storedPercentage = 0;
+      storedMeso = 0;
+
       timerText = _formatDuration(_elapsedTime);
     });
     _timer?.cancel();
@@ -640,7 +664,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                   ),
                 ),
                 SizedBox(
-                  width: 192,
+                  width: 148,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
@@ -674,6 +698,17 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                         ),
                       ),
                     ],
+                  ),
+                ),
+                CupertinoButton(
+                  padding: EdgeInsets.zero,
+                  onPressed: () async {
+                    _resetTimer();
+                  },
+                  child: const Icon(
+                    CupertinoIcons.restart,
+                    color: CupertinoColors.systemGrey6,
+                    size: 24,
                   ),
                 ),
                 CupertinoButton(
@@ -738,7 +773,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                                     } else if (isRunning) {
                                       _stopTimer();
                                     } else {
-                                      _resetTimer();
+                                      _startTimer();
                                     }
                                   },
                             color: isInitializing
@@ -747,9 +782,9 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                                     ? CupertinoColors.systemGrey
                                     : isRunning
                                         ? CupertinoColors.systemRed
-                                        : _elapsedTime == Duration.zero
+                                        : (_elapsedTime == Duration.zero)
                                             ? CupertinoColors.systemGreen
-                                            : CupertinoColors.systemBlue,
+                                            : CupertinoColors.systemYellow,
                             borderRadius: BorderRadius.circular(12),
                             child: isInitializing
                                 ? const CupertinoActivityIndicator(
@@ -758,11 +793,8 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                                     !isRoiSet
                                         ? CupertinoIcons.crop
                                         : isRunning
-                                            ? CupertinoIcons.stop_fill
-                                            : _elapsedTime == Duration.zero
-                                                ? CupertinoIcons
-                                                    .play_arrow_solid
-                                                : CupertinoIcons.restart,
+                                            ? CupertinoIcons.pause_fill
+                                            : CupertinoIcons.play_arrow_solid,
                                     color: CupertinoColors.white,
                                     size: 32,
                                   ),
