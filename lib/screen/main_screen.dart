@@ -630,11 +630,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
           if (!isRoiSet) {
             return;
           }
-          if (_elapsedTime == Duration.zero) {
-            _startTimer();
-          } else {
-            _resetTimer();
-          }
+          _startTimer();
         }
       },
     );
