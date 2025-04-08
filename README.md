@@ -21,8 +21,6 @@
 
 이처럼 클라이언트-서버 아키텍처를 통해, 각 구성 요소는 독립적으로 동작하면서도 서로 긴밀히 연결되어 실시간 경험치 추적 기능을 제공합니다.
 
----
-
 ## 사용된 라이브러리
 **Flutter**:
 - [window_manager](https://pub.dev/packages/window_manager): 창을 제어하고 전체 화면 및 창 이동을 지원.
@@ -47,19 +45,34 @@
 1. 앱을 실행한 뒤, 영역 지정 버튼을 눌러 게임 화면에서 경험치와 레벨이 표시되는 영역을 예시에 맞게 지정합니다.
 2. 영역 설정이 완료되면 타이머를 시작하여 실시간 데이터를 수집합니다.
 3. 앱 화면에서 경험치 증가량과 퍼센트 상승치를 실시간으로 확인하며 사냥 효율을 분석합니다.
-4. 설정 버튼을 눌러 설정 페이지로 이동하면, 타이머 시간을 지정할 수 있으며 평균 경험치 표시도 활성화할 수 있습니다.
-5. CapsLock + `(backquote) 핫키를 이용해 앱이 백그라운드 상태일 때도 타이머를 조작할 수 있습니다. 
+5. 설정 버튼을 눌러 설정 페이지로 이동하면, 타이머 시간을 지정할 수 있으며 평균 경험치 표시도 활성화할 수 있습니다.
+6. CapsLock + `(backquote) 핫키를 이용해 앱이 백그라운드 상태일 때도 타이머를 일시정지/재개할 수 있습니다.
 
----
+## 상단 메뉴 아이콘 설명
+
+- <img width="28" alt="Github" src="https://github.com/user-attachments/assets/be86422e-8cb9-40de-9115-6dec36b2eb3f" />  
+  **깃허브 페이지 열기:** 현재 깃허브 페이지를 열어 관련 정보를 확인할 수 있습니다.
+
+- <img width="47" alt="메소 측정 토글" src="https://github.com/user-attachments/assets/106f2baa-4521-4cf7-87ef-6595367d6758" />  
+  **메소 측정 모드 토글:** 메소 측정 모드를 활성화하거나 비활성화할 수 있습니다.
+
+- <img width="28" alt="타이머 초기화" src="https://github.com/user-attachments/assets/849c99a6-4f08-4166-af27-9b64c1f351a7" />  
+  **타이머 및 측정값 초기화:** 타이머와 현재까지 측정된 값을 초기 상태로 리셋합니다.
+
+- <img width="28" alt="인식 영역 재설정" src="https://github.com/user-attachments/assets/d1f13ed3-f487-4da6-8ba9-405c802022e9" />  
+  **인식 영역 재설정:** 경험치와 레벨이 표시되는 영역을 다시 지정할 수 있습니다.
+
+- <img width="28" alt="설정 화면 이동" src="https://github.com/user-attachments/assets/713dad68-43c4-4f0a-9066-187df0a485e7" />  
+  **설정 화면 이동:** 타이머 시간 설정 및 평균 경험치 표시 활성화 등의 추가 설정을 조정할 수 있습니다.
+
+- <img width="28" alt="앱 종료" src="https://github.com/user-attachments/assets/fdd7fe75-befb-4132-9b76-90c5b8d2afa5" />  
+  **앱 종료:** 앱을 안전하게 종료합니다.
 
 ## 사용 예시 영상
 
 [![사용 예시 영상](https://img.youtube.com/vi/8o71FTWMrao/maxresdefault.jpg)](https://youtu.be/8o71FTWMrao)
 
 위 이미지를 클릭하시면 앱의 사용 예시를 확인하실 수 있습니다.
-
-
----
 
 ## 주의 사항
 
@@ -84,7 +97,7 @@
 
 🔗 [앱 다운로드](https://l.linklyhq.com/l/23vxv)
 
-**현재 버전 1.5.1**
+**현재 버전 1.6.0**
 
 **새로 추가된 비트맵 폰트는 지원하지 않고 있습니다.  
 기존 메이플스토리 월드 폰트를 사용해주세요.**
