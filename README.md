@@ -50,23 +50,12 @@
 
 ## 상단 메뉴 아이콘 설명
 
-- <img width="28" alt="Github" src="https://github.com/user-attachments/assets/be86422e-8cb9-40de-9115-6dec36b2eb3f" />  
-  **깃허브 페이지 열기:** 현재 깃허브 페이지를 열어 관련 정보를 확인할 수 있습니다.
-
-- <img width="47" alt="메소 측정 토글" src="https://github.com/user-attachments/assets/106f2baa-4521-4cf7-87ef-6595367d6758" />  
-  **메소 측정 모드 토글:** 메소 측정 모드를 활성화하거나 비활성화할 수 있습니다.
-
-- <img width="28" alt="타이머 초기화" src="https://github.com/user-attachments/assets/849c99a6-4f08-4166-af27-9b64c1f351a7" />  
-  **타이머 및 측정값 초기화:** 타이머와 현재까지 측정된 값을 초기 상태로 리셋합니다.
-
-- <img width="28" alt="인식 영역 재설정" src="https://github.com/user-attachments/assets/d1f13ed3-f487-4da6-8ba9-405c802022e9" />  
-  **인식 영역 재설정:** 경험치와 레벨이 표시되는 영역을 다시 지정할 수 있습니다.
-
-- <img width="28" alt="설정 화면 이동" src="https://github.com/user-attachments/assets/713dad68-43c4-4f0a-9066-187df0a485e7" />  
-  **설정 화면 이동:** 타이머 시간 설정 및 평균 경험치 표시 활성화 등의 추가 설정을 조정할 수 있습니다.
-
-- <img width="28" alt="앱 종료" src="https://github.com/user-attachments/assets/fdd7fe75-befb-4132-9b76-90c5b8d2afa5" />  
-  **앱 종료:** 앱을 안전하게 종료합니다.
+- <img width="28" alt="Github" src="https://github.com/user-attachments/assets/be86422e-8cb9-40de-9115-6dec36b2eb3f" />  **깃허브 페이지 열기:** 현재 깃허브 페이지를 열어 관련 정보를 확인할 수 있습니다.
+- <img width="47" alt="메소 측정 토글" src="https://github.com/user-attachments/assets/106f2baa-4521-4cf7-87ef-6595367d6758" />  **메소 측정 모드 토글:** 메소 측정 모드를 활성화하거나 비활성화할 수 있습니다.
+- <img width="28" alt="타이머 초기화" src="https://github.com/user-attachments/assets/849c99a6-4f08-4166-af27-9b64c1f351a7" />  **타이머 및 측정값 초기화:** 타이머와 현재까지 측정된 값을 초기 상태로 리셋합니다.
+- <img width="28" alt="인식 영역 재설정" src="https://github.com/user-attachments/assets/d1f13ed3-f487-4da6-8ba9-405c802022e9" />  **인식 영역 재설정:** 경험치와 레벨이 표시되는 영역을 다시 지정할 수 있습니다.
+- <img width="28" alt="설정 화면 이동" src="https://github.com/user-attachments/assets/713dad68-43c4-4f0a-9066-187df0a485e7" />  **설정 화면 이동:** 타이머 시간 설정 및 평균 경험치 표시 활성화 등의 추가 설정을 조정할 수 있습니다.
+- <img width="28" alt="앱 종료" src="https://github.com/user-attachments/assets/fdd7fe75-befb-4132-9b76-90c5b8d2afa5" />  **앱 종료:** 앱을 안전하게 종료합니다.
 
 ## 사용 예시 영상
 
