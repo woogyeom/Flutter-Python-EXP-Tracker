@@ -647,16 +647,6 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
 
   @override
   Widget build(BuildContext context) {
-    // 스탑워치가 실행 중일 때만 예상 시각 계산
-    final now = DateTime.now();
-    final elapsedHours = _elapsedTime.inHours;
-    final nextHour = elapsedHours + 1;
-    final nextHourTime =
-        now.add(Duration(hours: nextHour, seconds: -_elapsedTime.inSeconds));
-    final expectedEndTimeStr = isRunning
-        ? "${nextHourTime.hour.toString().padLeft(2, '0')}:${nextHourTime.minute.toString().padLeft(2, '0')}:${nextHourTime.second.toString().padLeft(2, '0')}"
-        : "XX:XX:XX";
-
     return CupertinoPageScaffold(
       backgroundColor: isRunning
           ? CupertinoColors.darkBackgroundGray.withAlpha(150)
@@ -833,14 +823,13 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        if (showExpectedTime)
-                          Text(
-                            "$nextHour 시간 후 예상 시각: $expectedEndTimeStr",
-                            style: const TextStyle(
-                              color: CupertinoColors.systemGrey6,
-                              fontSize: 12,
-                            ),
+                        Text(
+                          "$_nextHourCount시간 뒤: ${_expectedEndTime != null ? DateFormat('HH:mm:ss').format(_expectedEndTime!) : "XX:XX:XX"}",
+                          style: const TextStyle(
+                            color: CupertinoColors.systemGrey6,
+                            fontSize: 12,
                           ),
+                        ),
                       ],
                     ),
                   // 경험치 UI
