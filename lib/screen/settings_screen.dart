@@ -272,6 +272,33 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
                         });
                       },
                     ),
+                    const SizedBox(height: 4),
+                    // Add this new section
+                    Row(
+                      children: [
+                        Text(
+                          "N 시간 후 예상 시각 표시",
+                          style: GoogleFonts.notoSans(
+                            textStyle: const TextStyle(
+                              color: CupertinoColors.systemGrey6,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Transform.scale(
+                          scale: 0.8,
+                          child: CupertinoSwitch(
+                            value: showExpectedTime,
+                            onChanged: (bool value) {
+                              setState(() {
+                                showExpectedTime = value;
+                              });
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
                     Expanded(child: Container()),
                   ],
                 ),
