@@ -12,6 +12,7 @@ class SettingsScreen extends StatefulWidget {
   final Duration showAverage;
   final AudioPlayer audioPlayer;
   final bool showMeso;
+  final bool showExpectedTime;
 
   const SettingsScreen({
     Key? key,
@@ -21,6 +22,7 @@ class SettingsScreen extends StatefulWidget {
     required this.showAverage,
     required this.audioPlayer,
     required this.showMeso,
+    required this.showExpectedTime,
   }) : super(key: key);
 
   @override
@@ -34,6 +36,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
   double currentVolume = 0.5;
   late AudioPlayer _audioPlayer;
   bool showMeso = false;
+  bool showExpectedTime = true;
 
   @override
   void initState() {
@@ -44,8 +47,9 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
     _audioPlayer = widget.audioPlayer;
     currentVolume = _audioPlayer.volume;
     showMeso = widget.showMeso;
+    showExpectedTime = widget.showExpectedTime;
 
-    windowManager.setSize(Size(appSize.width, 260));
+    windowManager.setSize(Size(appSize.width, 300));
 
     super.initState();
   }
@@ -122,6 +126,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
       'timerEndTime': selectedDuration1,
       'showAverage': selectedDuration2,
       'showMeso': showMeso,
+      'showExpectedTime': showExpectedTime,
     });
   }
 
@@ -271,6 +276,33 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
                           _selectedOption2 = value;
                         });
                       },
+                    ),
+                    const SizedBox(height: 4),
+                    // Add this new section
+                    Row(
+                      children: [
+                        Text(
+                          "N 시간 후 예상 시각 표시",
+                          style: GoogleFonts.notoSans(
+                            textStyle: const TextStyle(
+                              color: CupertinoColors.systemGrey6,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Transform.scale(
+                          scale: 0.8,
+                          child: CupertinoSwitch(
+                            value: showExpectedTime,
+                            onChanged: (bool value) {
+                              setState(() {
+                                showExpectedTime = value;
+                              });
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                     Expanded(child: Container()),
                   ],
