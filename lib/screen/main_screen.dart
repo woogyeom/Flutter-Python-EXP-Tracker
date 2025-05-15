@@ -46,8 +46,6 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   Duration updateInterval = const Duration(seconds: 1);
   Duration timerEndTime = Duration.zero;
   Duration _elapsedTime = Duration.zero;
-  DateTime? _expectedEndTime;
-  int _nextHourCount = 1;
 
   // 경험치/레벨 관련 변수
   int initialExp = 0;
@@ -220,7 +218,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
         timerEndTime = Duration(seconds: config["timerEndTime"] ?? 0);
         _audioPlayer.setVolume(config["volume"] ?? 0.5);
         showAverage = Duration(seconds: config["showAverage"] ?? 0);
-        showExpectedTime = config["showExpectedTime"] ?? false;
+        showExpectedTime = config["showExpectedTime"] ?? true;
       });
       safeLog("Config loaded: $config");
     } catch (e) {
@@ -439,8 +437,6 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   Future<void> _startTimer() async {
     _safeSetState(() {
       isRunning = true;
-      _nextHourCount = _elapsedTime.inHours + 1;
-      _expectedEndTime = DateTime.now().add(Duration(hours: _nextHourCount));
     });
 
     // 초기 데이터 fetch 및 UI 업데이트
@@ -647,6 +643,16 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
 
   @override
   Widget build(BuildContext context) {
+    // 스탑워치가 실행 중일 때만 예상 시각 계산
+    final now = DateTime.now();
+    final elapsedHours = _elapsedTime.inHours;
+    final nextHour = elapsedHours + 1;
+    final nextHourTime =
+        now.add(Duration(hours: nextHour, seconds: -_elapsedTime.inSeconds));
+    final expectedEndTimeStr = isRunning
+        ? "${nextHourTime.hour.toString().padLeft(2, '0')}:${nextHourTime.minute.toString().padLeft(2, '0')}:${nextHourTime.second.toString().padLeft(2, '0')}"
+        : "XX:XX:XX";
+
     return CupertinoPageScaffold(
       backgroundColor: isRunning
           ? CupertinoColors.darkBackgroundGray.withAlpha(150)
@@ -819,19 +825,19 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                       ],
                     ),
                   ),
-                  if (showExpectedTime)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (showExpectedTime)
                         Text(
-                          "$_nextHourCount시간 뒤: ${_expectedEndTime != null ? DateFormat('HH:mm:ss').format(_expectedEndTime!) : "XX:XX:XX"}",
+                          "$nextHour 시간 후 예상 시각: $expectedEndTimeStr",
                           style: const TextStyle(
                             color: CupertinoColors.systemGrey6,
                             fontSize: 12,
                           ),
                         ),
-                      ],
-                    ),
+                    ],
+                  ),
                   // 경험치 UI
                   Flexible(
                     child: FittedBox(
@@ -842,7 +848,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                         children: [
                           Text(
                             !isInitValueInserted
-                                ? 'XX [X.XX%]'
+                                ? '? [X.XX%]'
                                 : '${numberFormat.format(totalExp)} [${totalPercentage.toStringAsFixed(2)}%]',
                             style: GoogleFonts.notoSans(
                               textStyle: const TextStyle(
@@ -857,7 +863,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                           if (showAverage != Duration.zero)
                             Text(
                               !isInitValueInserted
-                                  ? 'XX [X.XX%] / ${showAverage.inMinutes}분'
+                                  ? '? [?.??%] / ${showAverage.inMinutes}분'
                                   : '${numberFormat.format(averageExp)} [${averagePercentage.toStringAsFixed(2)}%] / ${showAverage.inMinutes}분',
                               style: GoogleFonts.notoSans(
                                 textStyle: const TextStyle(
@@ -884,7 +890,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                           children: [
                             Text(
                               !isInitValueInserted
-                                  ? 'XXXX 메소'
+                                  ? '???? 메소'
                                   : '${numberFormat.format(totalMeso)} 메소',
                               style: GoogleFonts.notoSans(
                                 textStyle: const TextStyle(
@@ -899,7 +905,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                             if (showMeso && showAverage != Duration.zero)
                               Text(
                                 !isInitValueInserted
-                                    ? 'XXXX 메소 / ${showAverage.inMinutes}분'
+                                    ? '???? 메소 / ${showAverage.inMinutes}분'
                                     : '${numberFormat.format(averageMeso)} 메소 / ${showAverage.inMinutes}분',
                                 style: GoogleFonts.notoSans(
                                   textStyle: const TextStyle(

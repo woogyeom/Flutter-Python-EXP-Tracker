@@ -126,7 +126,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
       'timerEndTime': selectedDuration1,
       'showAverage': selectedDuration2,
       'showMeso': showMeso,
-      'showExpectedTime': widget.showExpectedTime,
+      'showExpectedTime': showExpectedTime,
     });
   }
 
@@ -295,8 +295,6 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
                           scale: 0.8,
                           child: CupertinoSwitch(
                             value: showExpectedTime,
-                            activeTrackColor: CupertinoColors.systemBlue,
-                            inactiveTrackColor: CupertinoColors.systemGrey,
                             onChanged: (bool value) {
                               setState(() {
                                 showExpectedTime = value;
