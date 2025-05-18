@@ -440,7 +440,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     _safeSetState(() {
       isRunning = true;
       _nextHourCount = _elapsedTime.inHours + 1;
-      _expectedEndTime = DateTime.now().add(Duration(hours: _nextHourCount));
+      _expectedEndTime = DateTime.now().add(Duration(hours: _nextHourCount, seconds: -_elapsedTime.inSeconds));
     });
 
     // 초기 데이터 fetch 및 UI 업데이트
