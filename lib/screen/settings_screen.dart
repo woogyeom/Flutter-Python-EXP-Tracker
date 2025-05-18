@@ -295,6 +295,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
                           scale: 0.8,
                           child: CupertinoSwitch(
                             value: showExpectedTime,
+                            activeTrackColor: CupertinoColors.systemBlue,
                             onChanged: (bool value) {
                               setState(() {
                                 showExpectedTime = value;
