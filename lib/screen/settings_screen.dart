@@ -1,4 +1,3 @@
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -10,7 +9,6 @@ class SettingsScreen extends StatefulWidget {
   final Duration updateInterval;
   final Duration timerEndTime;
   final Duration showAverage;
-  final AudioPlayer audioPlayer;
   final bool showMeso;
   final bool showExpectedTime;
 
@@ -20,7 +18,6 @@ class SettingsScreen extends StatefulWidget {
     required this.updateInterval,
     required this.timerEndTime,
     required this.showAverage,
-    required this.audioPlayer,
     required this.showMeso,
     required this.showExpectedTime,
   }) : super(key: key);
@@ -34,7 +31,6 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
   int _selectedOption1 = 0;
   int _selectedOption2 = 0;
   double currentVolume = 0.5;
-  late AudioPlayer _audioPlayer;
   bool showMeso = false;
   bool showExpectedTime = false;
 
@@ -44,8 +40,6 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
         _getSelectedUpdateIntervalFromDuration(widget.updateInterval);
     _selectedOption1 = _getSelectedOptionFromDuration(widget.timerEndTime);
     _selectedOption2 = _getSelectedOptionFromDuration(widget.showAverage);
-    _audioPlayer = widget.audioPlayer;
-    currentVolume = _audioPlayer.volume;
     showMeso = widget.showMeso;
     showExpectedTime = widget.showExpectedTime;
 
@@ -210,22 +204,6 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
                               color: CupertinoColors.systemGrey6,
                               fontSize: 14,
                             ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Material(
-                          type: MaterialType.transparency,
-                          child: CustomCupertinoSlider(
-                            value: currentVolume,
-                            divisions: 10,
-                            thumbRadius: 6.0,
-                            onChanged: (double value) async {
-                              setState(() {
-                                currentVolume = value;
-                              });
-                              await _audioPlayer.setVolume(currentVolume);
-                            },
-                            audioPlayer: _audioPlayer,
                           ),
                         ),
                       ],
@@ -409,76 +387,6 @@ class _PressableIconState extends State<PressableIcon> {
           ],
         ),
       ),
-    );
-  }
-}
-
-class CustomCupertinoSlider extends StatelessWidget {
-  final double value;
-  final ValueChanged<double> onChanged;
-  final double min;
-  final double max;
-  final int? divisions;
-  final double thumbRadius; // 원하는 thumb 크기를 반지름으로 지정
-  final String label;
-  final AudioPlayer audioPlayer;
-
-  const CustomCupertinoSlider({
-    Key? key,
-    required this.value,
-    required this.onChanged,
-    this.min = 0.0,
-    this.max = 1.0,
-    this.divisions,
-    this.thumbRadius = 10.0, // 기본 thumb 크기
-    this.label = "",
-    required this.audioPlayer,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    // Material Slider에 SliderTheme를 적용해 thumb 크기와 색상 등 스타일을 지정합니다.
-    return Row(
-      children: [
-        PressableIcon(
-          icon: CupertinoIcons.play_circle_fill,
-          color: CupertinoColors.systemBlue,
-          size: 24,
-          onPressed: () async {
-            await audioPlayer.play(AssetSource('timer_alarm.mp3'));
-          },
-        ),
-        const SizedBox(width: 4),
-        SizedBox(
-          width: 146, // 원하는 슬라이더 전체 너비
-          child: SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              trackHeight: 2.0,
-              trackShape: NoPaddingTrackShape(), // 커스텀 트랙 모양 적용
-              thumbShape:
-                  RoundSliderThumbShape(enabledThumbRadius: thumbRadius),
-              overlayShape:
-                  RoundSliderOverlayShape(overlayRadius: thumbRadius * 2),
-              activeTrackColor: CupertinoColors.systemBlue,
-              inactiveTrackColor: CupertinoColors.systemGrey,
-              thumbColor: CupertinoColors.systemBlue,
-              overlayColor: CupertinoColors.systemBlue.withOpacity(0.3),
-              tickMarkShape: const NoTickMarkShape(), // 틱마크를 숨김
-              showValueIndicator: label == ""
-                  ? ShowValueIndicator.never
-                  : ShowValueIndicator.always,
-            ),
-            child: Slider(
-              label: label,
-              value: value,
-              min: min,
-              max: max,
-              divisions: divisions,
-              onChanged: onChanged,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

@@ -2,9 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_exp_timer/exp_data_loader.dart';
 import 'package:flutter_exp_timer/log.dart';
@@ -31,7 +29,6 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> with WindowListener {
   // 데이터 및 플레이어
   final ExpDataLoader _expDataLoader = ExpDataLoader();
-  final AudioPlayer _audioPlayer = AudioPlayer();
 
   // 상태 변수
   bool isRunning = false;
@@ -157,7 +154,6 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
           : null,
       "updateInterval": updateInterval.inSeconds,
       "timerEndTime": timerEndTime.inSeconds,
-      "volume": _audioPlayer.volume,
       "showAverage": showAverage.inSeconds,
       "showExpectedTime": showExpectedTime,
     };
@@ -218,7 +214,6 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
         }
         updateInterval = Duration(seconds: config["updateInterval"] ?? 1);
         timerEndTime = Duration(seconds: config["timerEndTime"] ?? 0);
-        _audioPlayer.setVolume(config["volume"] ?? 0.5);
         showAverage = Duration(seconds: config["showAverage"] ?? 0);
         showExpectedTime = config["showExpectedTime"] ?? false;
       });
@@ -440,7 +435,8 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     _safeSetState(() {
       isRunning = true;
       _nextHourCount = _elapsedTime.inHours + 1;
-      _expectedEndTime = DateTime.now().add(Duration(hours: _nextHourCount, seconds: -_elapsedTime.inSeconds));
+      _expectedEndTime = DateTime.now().add(
+          Duration(hours: _nextHourCount, seconds: -_elapsedTime.inSeconds));
     });
 
     // 초기 데이터 fetch 및 UI 업데이트
@@ -456,7 +452,6 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
         await _updateData(fetchData: true);
       }
       if (timerEndTime != Duration.zero && _elapsedTime >= timerEndTime) {
-        _audioPlayer.play(AssetSource('timer_alarm.mp3'));
         await _stopTimer();
       }
     });
@@ -523,7 +518,6 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
           updateInterval: updateInterval,
           timerEndTime: timerEndTime,
           showAverage: showAverage,
-          audioPlayer: _audioPlayer,
           showMeso: showMeso,
           showExpectedTime: showExpectedTime,
         ),
@@ -605,7 +599,6 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     super.initState();
     safeLog("initState() 호출됨, 버전: $appVersion");
     windowManager.addListener(this);
-    _audioPlayer.setVolume(0.5);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       safeLog("Post-frame callback 시작");
       _initializeApp();

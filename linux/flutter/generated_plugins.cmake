@@ -3,7 +3,6 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
-  audioplayers_linux
   hotkey_manager_linux
   screen_retriever_linux
   url_launcher_linux
