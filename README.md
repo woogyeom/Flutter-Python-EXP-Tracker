@@ -85,6 +85,7 @@
 ![image](https://github.com/user-attachments/assets/cf5267b0-cd66-46e7-bb4a-0debf55fc2f8)
 
 🔗 [앱 다운로드](https://l.linklyhq.com/l/23vxv)
+🔗 [앱 다운로드 예비 링크](https://2ly.link/29bOU)
 
 **현재 버전 1.7.1**
 
