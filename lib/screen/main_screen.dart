@@ -87,25 +87,47 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     scope: HotKeyScope.system,
   );
 
-  // ============================================================
-  // HELPER METHODS
-  // ============================================================
+  @override
+  void initState() {
+    super.initState();
+    safeLog("initState() 호출됨, 버전: $appVersion");
+    windowManager.addListener(this);
+    _audioPlayer.setVolume(0.5);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      safeLog("Post-frame callback 시작");
+      _initializeApp();
+    });
+    _registerHotKey();
+  }
+
+  @override
+  void dispose() {
+    safeLog('dispose');
+    windowManager.removeListener(this);
+    _timer?.cancel();
+    hotKeyManager.unregisterAll();
+    super.dispose();
+  }
+
+  @override
+  void onWindowClose() async {
+    safeLog("Closing app...");
+    await _saveConfig();
+    await widget.serverManager.shutdownServer();
+    windowManager.destroy();
+  }
+
   void _safeSetState(VoidCallback fn) {
     if (mounted) setState(fn);
   }
 
-  /// _calculateAverage: 평균값(경험치, 퍼센티지, 메소)을 계산합니다.
   void _calculateAverage() {
     if (showAverage == Duration.zero || _elapsedTime.inSeconds <= 0) return;
-    averageExp =
-        ((totalExp / _elapsedTime.inSeconds) * showAverage.inSeconds).floor();
-    averagePercentage =
-        (totalPercentage / _elapsedTime.inSeconds) * showAverage.inSeconds;
-    averageMeso =
-        ((totalMeso / _elapsedTime.inSeconds) * showAverage.inSeconds).floor();
+    averageExp = ((totalExp / _elapsedTime.inSeconds) * showAverage.inSeconds).floor();
+    averagePercentage = (totalPercentage / _elapsedTime.inSeconds) * showAverage.inSeconds;
+    averageMeso = ((totalMeso / _elapsedTime.inSeconds) * showAverage.inSeconds).floor();
   }
 
-  /// _formatDuration: Duration을 HH:MM:SS 형식의 문자열로 변환합니다.
   String _formatDuration(Duration duration) {
     String twoDigits(int n) => n.toString().padLeft(2, "0");
     String hours = twoDigits(duration.inHours.remainder(60));
@@ -114,14 +136,10 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     return "$hours:$minutes:$seconds";
   }
 
-  // ============================================================
-  // CONFIG 관련 메소드
-  // ============================================================
   Future<File> _getConfigFile() async {
     const String configPath = "config/config.json";
     final Directory currentDir = Directory.current;
     final File configFile = File('${currentDir.path}/$configPath');
-
     if (!await configFile.parent.exists()) {
       await configFile.parent.create(recursive: true);
     }
@@ -134,34 +152,21 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   Future<void> _saveConfig() async {
     final file = await _getConfigFile();
     final Offset position = await windowManager.getPosition();
+    final Size size = await windowManager.getSize();
+
     Map<String, dynamic> config = {
-      "position": {
-        "x": position.dx,
-        "y": position.dy,
-      },
-      "levelRect": levelRect != null
-          ? {
-              "left": levelRect!.left,
-              "top": levelRect!.top,
-              "right": levelRect!.right,
-              "bottom": levelRect!.bottom,
-            }
-          : null,
-      "expRect": expRect != null
-          ? {
-              "left": expRect!.left,
-              "top": expRect!.top,
-              "right": expRect!.right,
-              "bottom": expRect!.bottom,
-            }
-          : null,
+      "position": {"x": position.dx, "y": position.dy},
+      "size": {"width": size.width, "height": size.height},
+      "levelRect": levelRect != null ? {"left": levelRect!.left, "top": levelRect!.top, "right": levelRect!.right, "bottom": levelRect!.bottom} : null,
+      "expRect": expRect != null ? {"left": expRect!.left, "top": expRect!.top, "right": expRect!.right, "bottom": expRect!.bottom} : null,
+      "mesoRect": mesoRect != null ? {"left": mesoRect!.left, "top": mesoRect!.top, "right": mesoRect!.right, "bottom": mesoRect!.bottom} : null,
       "updateInterval": updateInterval.inSeconds,
       "timerEndTime": timerEndTime.inSeconds,
       "volume": _audioPlayer.volume,
       "showAverage": showAverage.inSeconds,
+      "showMeso": showMeso,
       "showExpectedTime": showExpectedTime,
     };
-
     try {
       await file.writeAsString(jsonEncode(config));
     } catch (e) {
@@ -173,65 +178,47 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     try {
       final file = await _getConfigFile();
       String content = await file.readAsString();
-      safeLog("Config 파일 내용: $content");
-      Map<String, dynamic> config;
-      try {
-        config = jsonDecode(content);
-      } catch (e) {
-        safeLog("Invalid config format. Recreating config file.");
-        await file.writeAsString("{}");
-        config = {};
-      }
-      if (config.isEmpty) {
-        safeLog("Empty config, skipping further config load.");
+      if (content.isEmpty) {
+        safeLog("Empty config, skipping config load.");
         return;
       }
+      Map<String, dynamic> config = jsonDecode(content);
 
       if (config["position"] != null && config["position"] is Map) {
         final pos = config["position"] as Map<String, dynamic>;
-        final newPos = Offset(
-          (pos["x"] ?? 0).toDouble(),
-          (pos["y"] ?? 0).toDouble(),
-        );
-        safeLog("Setting window position to: $newPos");
-        await windowManager.setPosition(newPos);
+        await windowManager.setPosition(Offset((pos["x"] ?? 0).toDouble(), (pos["y"] ?? 0).toDouble()));
+      }
+      if (config["size"] != null && config["size"] is Map) {
+        final size = config["size"] as Map<String, dynamic>;
+        await windowManager.setSize(Size((size["width"] ?? appSize.width).toDouble(), (size["height"] ?? appSize.height).toDouble()));
       }
 
       _safeSetState(() {
-        if (config["levelRect"] != null && config["levelRect"] is Map) {
-          final rect = config["levelRect"] as Map<String, dynamic>;
-          levelRect = Rect.fromLTRB(
-            (rect["left"] ?? 0).toDouble(),
-            (rect["top"] ?? 0).toDouble(),
-            (rect["right"] ?? 0).toDouble(),
-            (rect["bottom"] ?? 0).toDouble(),
-          );
+        if (config["levelRect"] != null) {
+          final rect = config["levelRect"];
+          levelRect = Rect.fromLTRB(rect["left"], rect["top"], rect["right"], rect["bottom"]);
         }
-        if (config["expRect"] != null && config["expRect"] is Map) {
-          final rect = config["expRect"] as Map<String, dynamic>;
-          expRect = Rect.fromLTRB(
-            (rect["left"] ?? 0).toDouble(),
-            (rect["top"] ?? 0).toDouble(),
-            (rect["right"] ?? 0).toDouble(),
-            (rect["bottom"] ?? 0).toDouble(),
-          );
+        if (config["expRect"] != null) {
+          final rect = config["expRect"];
+          expRect = Rect.fromLTRB(rect["left"], rect["top"], rect["right"], rect["bottom"]);
+        }
+        if (config["mesoRect"] != null) {
+          final rect = config["mesoRect"];
+          mesoRect = Rect.fromLTRB(rect["left"], rect["top"], rect["right"], rect["bottom"]);
         }
         updateInterval = Duration(seconds: config["updateInterval"] ?? 1);
         timerEndTime = Duration(seconds: config["timerEndTime"] ?? 0);
         _audioPlayer.setVolume(config["volume"] ?? 0.5);
         showAverage = Duration(seconds: config["showAverage"] ?? 0);
+        showMeso = config["showMeso"] ?? false;
         showExpectedTime = config["showExpectedTime"] ?? false;
       });
       safeLog("Config loaded: $config");
     } catch (e) {
       await safeLog("Error loading config: $e");
-      exit(1);
     }
   }
 
-  // ============================================================
-  // 서버 통신 및 초기화 관련 메소드
-  // ============================================================
   Future<void> _initializeApp() async {
     try {
       await _expDataLoader.loadExpData();
@@ -276,8 +263,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
 
   Future<bool> checkServerReady() async {
     try {
-      final response =
-          await http.get(Uri.parse("http://127.0.0.1:5000/health"));
+      final response = await http.get(Uri.parse("http://127.0.0.1:5000/health"));
       return response.statusCode == 200;
     } catch (e) {
       return false;
@@ -300,8 +286,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
         safeLog("서버 준비 대기 중... ($elapsed 초 경과)");
         await Future.delayed(const Duration(milliseconds: 500));
       } catch (e, stack) {
-        await safeLog(
-            "예외 발생 during waitForServerReady: $e\nStackTrace: $stack");
+        await safeLog("예외 발생 during waitForServerReady: $e\nStackTrace: $stack");
         exit(1);
       }
     }
@@ -314,31 +299,14 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     }
     final url = Uri.parse("http://127.0.0.1:5000/set_roi");
     Map<String, dynamic> roiData = {
-      "level": [
-        levelRect!.left,
-        levelRect!.top,
-        levelRect!.right,
-        levelRect!.bottom,
-      ],
-      "exp": [
-        expRect!.left,
-        expRect!.top,
-        expRect!.right,
-        expRect!.bottom,
-      ],
+      "level": [levelRect!.left, levelRect!.top, levelRect!.right, levelRect!.bottom],
+      "exp": [expRect!.left, expRect!.top, expRect!.right, expRect!.bottom],
     };
     if (mesoRect != null) {
-      roiData["meso"] = [
-        mesoRect!.left,
-        mesoRect!.top,
-        mesoRect!.right,
-        mesoRect!.bottom,
-      ];
+      roiData["meso"] = [mesoRect!.left, mesoRect!.top, mesoRect!.right, mesoRect!.bottom];
     }
     try {
-      final response = await http.post(url,
-          headers: {"Content-Type": "application/json"},
-          body: jsonEncode(roiData));
+      final response = await http.post(url, headers: {"Content-Type": "application/json"}, body: jsonEncode(roiData));
       if (response.statusCode == 200) {
         _safeSetState(() {
           isRoiSet = true;
@@ -352,15 +320,10 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     }
   }
 
-  // ============================================================
-  // 데이터 업데이트: 서버에서 fetch한 데이터를 기반으로 일반 수치와 평균값을 동시에 업데이트
-  // ============================================================
   Future<void> _updateData({required bool fetchData}) async {
     if (fetchData) {
       try {
-        // EXP 데이터 fetch
-        final expResponse = await http
-            .get(Uri.parse('http://127.0.0.1:5000/extract_exp_and_level'));
+        final expResponse = await http.get(Uri.parse('http://127.0.0.1:5000/extract_exp_and_level'));
         if (expResponse.statusCode != 200) {
           throw Exception("Failed to fetch EXP data");
         }
@@ -368,47 +331,35 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
         int exp = expData['exp'];
         double percentage = expData['percentage'];
         int level = expData['level'];
-
-        // Meso 데이터 fetch (선택적)
         Map<String, dynamic>? mesoData;
         if (showMeso) {
-          final mesoResponse =
-              await http.get(Uri.parse('http://127.0.0.1:5000/extract_meso'));
+          final mesoResponse = await http.get(Uri.parse('http://127.0.0.1:5000/extract_meso'));
           if (mesoResponse.statusCode == 200) {
             mesoData = json.decode(mesoResponse.body);
           } else {
             throw Exception("Failed to fetch Meso data");
           }
         }
-
         _safeSetState(() {
-          // EXP 데이터 업데이트
           if (initialLevel == 0) {
             initialLevel = level;
             initialExp = exp;
             initialPercentage = percentage;
             isInitValueInserted = true;
           } else {
-            // 레벨 업
-            if (level > lastLevel &&
-                ((level - lastLevel) == 1 || (level - lastLevel) == 2)) {
+            if (level > lastLevel && ((level - lastLevel) == 1 || (level - lastLevel) == 2)) {
               int levelUpExp = _expDataLoader.getExpForLevel(lastLevel);
               expBeforeLevelUp = levelUpExp - lastExp + totalExp;
               percentageBeforeLevelUp = 100 - lastPercentage + totalPercentage;
               initialExp = 0;
               initialPercentage = 0.0;
-              lastLevel = level;
             }
             totalExp = exp - initialExp + expBeforeLevelUp + storedExp;
-            totalPercentage = percentage -
-                initialPercentage +
-                percentageBeforeLevelUp +
-                storedPercentage;
+            totalPercentage = percentage - initialPercentage + percentageBeforeLevelUp + storedPercentage;
             lastExp = exp;
             lastPercentage = percentage;
             lastLevel = level;
           }
-          // Meso 데이터 업데이트
           if (mesoData != null) {
             int meso = mesoData['meso'];
             if (initialMeso == 0) {
@@ -417,7 +368,6 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
               totalMeso = meso - initialMeso + storedMeso;
             }
           }
-          // 동시에 평균 계산 및 타이머 텍스트 업데이트
           _calculateAverage();
           timerText = _formatDuration(_elapsedTime);
         });
@@ -425,7 +375,6 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
         safeLog("[Server] Error updating data: $e");
       }
     } else {
-      // fetchData가 false이면, 단순히 평균과 타이머 텍스트만 업데이트 (설정 화면 등)
       _safeSetState(() {
         _calculateAverage();
         timerText = _formatDuration(_elapsedTime);
@@ -433,25 +382,18 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     }
   }
 
-  // ============================================================
-  // 타이머 관련 메소드
-  // ============================================================
   Future<void> _startTimer() async {
     _safeSetState(() {
       isRunning = true;
       _nextHourCount = _elapsedTime.inHours + 1;
       _expectedEndTime = DateTime.now().add(Duration(hours: _nextHourCount, seconds: -_elapsedTime.inSeconds));
     });
-
-    // 초기 데이터 fetch 및 UI 업데이트
     await _updateData(fetchData: true);
-
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) async {
       _safeSetState(() {
         _elapsedTime += const Duration(seconds: 1);
         timerText = _formatDuration(_elapsedTime);
       });
-      // updateInterval마다 서버 데이터를 fetch하여 업데이트
       if (_elapsedTime.inSeconds % updateInterval.inSeconds == 0) {
         await _updateData(fetchData: true);
       }
@@ -463,7 +405,6 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   }
 
   Future<void> _stopTimer() async {
-    // 타이머 종료 전 최신 데이터 fetch 및 업데이트
     await _updateData(fetchData: true);
     _safeSetState(() {
       isRunning = false;
@@ -482,38 +423,28 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     _safeSetState(() {
       isRunning = false;
       _elapsedTime = Duration.zero;
-
       initialExp = 0;
       initialPercentage = 0;
       initialLevel = 0;
       initialMeso = 0;
-
       lastExp = 0;
       lastPercentage = 0;
-
       totalExp = 0;
       totalPercentage = 0;
       totalMeso = 0;
-
       averageExp = 0;
       averagePercentage = 0;
       averageMeso = 0;
-
       expBeforeLevelUp = 0;
       percentageBeforeLevelUp = 0;
-
       storedExp = 0;
       storedPercentage = 0;
       storedMeso = 0;
-
       timerText = _formatDuration(_elapsedTime);
     });
     _timer?.cancel();
   }
 
-  // ============================================================
-  // 네비게이션 및 기타 UI 이벤트
-  // ============================================================
   void _openSettingsScreen() async {
     final result = await Navigator.push(
       context,
@@ -539,7 +470,6 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
         showMeso = result['showMeso'];
         showExpectedTime = result['showExpectedTime'];
       });
-      // 설정 화면에서 돌아올 때는 fetch 없이 평균/타이머만 업데이트
       await _updateData(fetchData: false);
       _saveConfig();
     }
@@ -549,8 +479,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     final result = await Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            RectSelectScreen(),
+        pageBuilder: (context, animation, secondaryAnimation) => RectSelectScreen(),
         transitionDuration: Duration.zero,
         reverseTransitionDuration: Duration.zero,
       ),
@@ -559,8 +488,6 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
       _safeSetState(() {
         levelRect = result['level'];
         expRect = result['exp'];
-      });
-      _safeSetState(() {
         isRoiSet = true;
       });
       _saveConfig();
@@ -572,8 +499,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     final result = await Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            RectSelectScreen(isMeso: true),
+        pageBuilder: (context, animation, secondaryAnimation) => RectSelectScreen(isMeso: true),
         transitionDuration: Duration.zero,
         reverseTransitionDuration: Duration.zero,
       ),
@@ -588,45 +514,12 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   }
 
   void _launchURL() async {
-    final Uri url =
-        Uri.parse("https://github.com/woogyeom/Flutter-Python-EXP-Tracker");
+    final Uri url = Uri.parse("https://github.com/woogyeom/Flutter-Python-EXP-Tracker");
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     } else {
       throw "Could not launch $url";
     }
-  }
-
-  // ============================================================
-  // Lifecycle & Window 이벤트
-  // ============================================================
-  @override
-  void initState() {
-    super.initState();
-    safeLog("initState() 호출됨, 버전: $appVersion");
-    windowManager.addListener(this);
-    _audioPlayer.setVolume(0.5);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      safeLog("Post-frame callback 시작");
-      _initializeApp();
-    });
-    _registerHotKey();
-  }
-
-  @override
-  void dispose() {
-    safeLog('dispose');
-    windowManager.removeListener(this);
-    _timer?.cancel();
-    hotKeyManager.unregisterAll();
-    super.dispose();
-  }
-
-  @override
-  void onWindowClose() async {
-    safeLog("Closing app...");
-    await widget.serverManager.shutdownServer();
-    windowManager.close();
   }
 
   void _registerHotKey() async {
@@ -645,15 +538,21 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     );
   }
 
-  @override
+@override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
       backgroundColor: isRunning
           ? CupertinoColors.darkBackgroundGray.withAlpha(150)
           : CupertinoColors.darkBackgroundGray,
       child: DragToMoveArea(
-        child: Column(
-          children: [
+        child: SizedBox.expand(
+        child: FittedBox(
+          fit: BoxFit.cover,
+          child: SizedBox(
+            width: appSize.width,
+            height: appSize.height,
+            child: Column(
+              children: [
             const SizedBox(height: 4),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -920,7 +819,10 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
             ),
           ],
         ),
+          )
+        )
+      ),
       ),
     );
-  }
+  } 
 }
