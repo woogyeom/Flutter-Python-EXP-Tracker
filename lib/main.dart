@@ -8,7 +8,7 @@ import 'package:flutter_exp_timer/server_manager.dart'; // 서버 매니저 불�
 import 'package:flutter_exp_timer/log.dart'; // safeLog를 사용하기 위함
 import 'package:hotkey_manager/hotkey_manager.dart';
 
-const String appVersion = "1.7.2 - no-audio";
+const String appVersion = "1.8.0";
 const Size appSize = Size(400, 200);
 
 void main() {
@@ -36,7 +36,11 @@ void main() {
       titleBarStyle: TitleBarStyle.hidden,
     );
 
-    await windowManager.setResizable(false);
+    await windowManager.setAspectRatio(2);
+    //await windowManager.setMaximumSize(appSize);
+    //await windowManager.setMinimumSize(const Size(200, 100));
+
+    await windowManager.setResizable(true);
     await windowManager.setAlwaysOnTop(true);
     await windowManager.setMaximizable(false);
     await windowManager.setOpacity(1.0);

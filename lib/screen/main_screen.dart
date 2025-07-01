@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
@@ -131,10 +132,15 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   Future<void> _saveConfig() async {
     final file = await _getConfigFile();
     final Offset position = await windowManager.getPosition();
+    final Size size = await windowManager.getSize();
     Map<String, dynamic> config = {
       "position": {
         "x": position.dx,
         "y": position.dy,
+      },
+      "size": {
+        "width": size.width,
+        "height": size.height,
       },
       "levelRect": levelRect != null
           ? {
@@ -192,7 +198,15 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
         safeLog("Setting window position to: $newPos");
         await windowManager.setPosition(newPos);
       }
-
+      if (config["size"] != null && config["size"] is Map) {
+        final size = config["size"] as Map<String, dynamic>;
+        final newSize = Size(
+          (size["width"] ?? 0).toDouble(),
+          (size["height"] ?? 0).toDouble(),
+        );
+        safeLog("Setting window size to: $newSize");
+        await windowManager.setSize(newSize);
+      }
       _safeSetState(() {
         if (config["levelRect"] != null && config["levelRect"] is Map) {
           final rect = config["levelRect"] as Map<String, dynamic>;
@@ -645,8 +659,14 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
           ? CupertinoColors.darkBackgroundGray.withAlpha(150)
           : CupertinoColors.darkBackgroundGray,
       child: DragToMoveArea(
-        child: Column(
-          children: [
+        child: SizedBox.expand(
+        child: FittedBox(
+          fit: BoxFit.cover,
+          child: SizedBox(
+            width: appSize.width,
+            height: appSize.height,
+            child: Column(
+              children: [
             const SizedBox(height: 4),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -913,6 +933,9 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
             ),
           ],
         ),
+          )
+        )
+      ),
       ),
     );
   }
