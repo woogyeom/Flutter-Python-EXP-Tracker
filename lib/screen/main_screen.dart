@@ -695,13 +695,6 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                               showMeso = value;
                             });
                             _saveConfig();
-                            _safeSetState(() {
-                              if (showMeso) {
-                                windowManager.setSize(Size(appSize.width, 250));
-                              } else {
-                                windowManager.setSize(appSize);
-                              }
-                            });
                             if (value) {
                               await _openMesoRectSelectScreen();
                             }
