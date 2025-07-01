@@ -108,7 +108,6 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
 
   @override
   Widget build(BuildContext context) {
-    // 세로 공간 확보를 위해 디자인 캔버스 높이를 200으로 유지합니다.
     const Size settingsDesignSize = Size(400, 200);
 
     return CupertinoPageScaffold(
@@ -167,13 +166,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
           Text("업데이트 주기", style: GoogleFonts.notoSans(textStyle: const TextStyle(color: CupertinoColors.systemGrey6, fontSize: 14))),
           CupertinoSegmentedControl<int>( padding: const EdgeInsets.all(2), unselectedColor: CupertinoColors.darkBackgroundGray, groupValue: _selectedOption0, children: {0: _buildSegment("1초"), 1: _buildSegment("5초"), 2: _buildSegment("15초"), 3: _buildSegment("30초"), 4: _buildSegment("1분")}, onValueChanged: (int value) { setState(() { _selectedOption0 = value; }); }),
           const SizedBox(height: 2),
-          Row(
-            children: [
-              Text("타이머 자동 정지", style: GoogleFonts.notoSans(textStyle: const TextStyle(color: CupertinoColors.systemGrey6, fontSize: 14))),
-              const SizedBox(width: 8),
-              Material(type: MaterialType.transparency, child: CustomCupertinoSlider(value: currentVolume, divisions: 10, thumbRadius: 6.0, onChanged: (double value) async { setState(() { currentVolume = value; }); await _audioPlayer.setVolume(currentVolume); }, audioPlayer: _audioPlayer)),
-            ],
-          ),
+          Text("타이머 자동 정지", style: GoogleFonts.notoSans(textStyle: const TextStyle(color: CupertinoColors.systemGrey6, fontSize: 14))),
           const SizedBox(height: 2),
           CupertinoSegmentedControl<int>(padding: const EdgeInsets.all(2), unselectedColor: CupertinoColors.darkBackgroundGray, groupValue: _selectedOption1, children: {0: _buildSegment("안 함"), 1: _buildSegment("5분"), 2: _buildSegment("15분"), 3: _buildSegment("30분"), 4: _buildSegment("1시간")}, onValueChanged: (int value) { setState(() { _selectedOption1 = value; }); }),
         ],
@@ -264,17 +257,6 @@ class _PressableIconState extends State<PressableIcon> {
         ]),
       ),
     );
-  }
-}
-class CustomCupertinoSlider extends StatelessWidget {
-  final double value; final ValueChanged<double> onChanged; final double min; final double max; final int? divisions; final double thumbRadius; final String label; final AudioPlayer audioPlayer;
-  const CustomCupertinoSlider({Key? key, required this.value, required this.onChanged, this.min = 0.0, this.max = 1.0, this.divisions, this.thumbRadius = 10.0, this.label = "", required this.audioPlayer}) : super(key: key);
-  @override Widget build(BuildContext context) {
-    return Row(children: [
-      PressableIcon(icon: CupertinoIcons.play_circle_fill, color: CupertinoColors.systemBlue, size: 24, onPressed: () async { await audioPlayer.play(AssetSource('timer_alarm.mp3')); }),
-      const SizedBox(width: 4),
-      SizedBox(width: 146, child: SliderTheme(data: SliderTheme.of(context).copyWith(trackHeight: 2.0, trackShape: NoPaddingTrackShape(), thumbShape: RoundSliderThumbShape(enabledThumbRadius: thumbRadius), overlayShape: RoundSliderOverlayShape(overlayRadius: thumbRadius * 2), activeTrackColor: CupertinoColors.systemBlue, inactiveTrackColor: CupertinoColors.systemGrey, thumbColor: CupertinoColors.systemBlue, overlayColor: CupertinoColors.systemBlue.withOpacity(0.3), tickMarkShape: const NoTickMarkShape(), showValueIndicator: label == "" ? ShowValueIndicator.never : ShowValueIndicator.always), child: Slider(label: label, value: value, min: min, max: max, divisions: divisions, onChanged: onChanged))),
-    ]);
   }
 }
 class NoPaddingTrackShape extends RoundedRectSliderTrackShape {
