@@ -50,7 +50,6 @@ void main() {
       runApp(MyApp(serverManager: serverManager));
     });
   }, (error, stackTrace) {
-    // 이곳에서 전역 예외 처리
     safeLog("Unhandled error: $error\nStack: $stackTrace");
   });
 }
@@ -63,7 +62,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CupertinoApp(
-      // debugShowCheckedModeBanner: false,
+      debugShowCheckedModeBanner: false,
       theme: const CupertinoThemeData(
         brightness: Brightness.light,
       ),
