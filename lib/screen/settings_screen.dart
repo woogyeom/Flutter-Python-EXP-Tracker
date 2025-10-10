@@ -8,7 +8,8 @@ class SettingsScreen extends StatefulWidget {
   final bool isRunning;
   final Duration updateInterval;
   final Duration timerEndTime;
-  final Duration showAverage;
+  final Duration showExpAverage;
+  final Duration showMesoAverage;
   final bool showMeso;
   final bool showExpectedTime;
 
@@ -17,7 +18,8 @@ class SettingsScreen extends StatefulWidget {
     required this.isRunning,
     required this.updateInterval,
     required this.timerEndTime,
-    required this.showAverage,
+    required this.showExpAverage,
+    required this.showMesoAverage,
     required this.showMeso,
     required this.showExpectedTime,
   }) : super(key: key);
@@ -26,15 +28,15 @@ class SettingsScreen extends StatefulWidget {
   _SettingsScreenState createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
+class _SettingsScreenState extends State<SettingsScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
-  final int _totalPages = 2;
+  final int _totalPages = 3;
 
   int _selectedOption0 = 0;
   int _selectedOption1 = 0;
   int _selectedOption2 = 0;
-  double currentVolume = 0.5;
+  int _selectedOption3 = 0;
   bool showMeso = false;
   bool showExpectedTime = false;
 
@@ -43,7 +45,8 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
     super.initState();
     _selectedOption0 = _getSelectedUpdateIntervalFromDuration(widget.updateInterval);
     _selectedOption1 = _getSelectedOptionFromDuration(widget.timerEndTime);
-    _selectedOption2 = _getSelectedOptionFromDuration(widget.showAverage);
+    _selectedOption2 = _getSelectedOptionFromDuration(widget.showExpAverage);
+    _selectedOption3 = _getSelectedOptionFromDuration(widget.showMesoAverage);
     showMeso = widget.showMeso;
     showExpectedTime = widget.showExpectedTime;
   }
@@ -51,7 +54,6 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
   @override
   void dispose() {
     _pageController.dispose();
-    windowManager.removeListener(this);
     super.dispose();
   }
 
@@ -97,10 +99,12 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
     final selectedDuration0 = _durationFromSelectedUpdateInterval(_selectedOption0);
     final selectedDuration1 = _durationFromSelectedOption(_selectedOption1);
     final selectedDuration2 = _durationFromSelectedOption(_selectedOption2);
+    final selectedDuration3 = _durationFromSelectedOption(_selectedOption3);
     Navigator.pop(context, {
       'updateInterval': selectedDuration0,
       'timerEndTime': selectedDuration1,
-      'showAverage': selectedDuration2,
+      'showExpAverage': selectedDuration2,
+      'showMesoAverage': selectedDuration3,
       'showMeso': showMeso,
       'showExpectedTime': showExpectedTime,
     });
@@ -113,46 +117,47 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
     return CupertinoPageScaffold(
       backgroundColor: widget.isRunning ? CupertinoColors.darkBackgroundGray.withAlpha(200) : CupertinoColors.darkBackgroundGray,
       child: SizedBox.expand(
-      child: FittedBox(
-        fit: BoxFit.cover,
-        child: SizedBox(
-          width: settingsDesignSize.width,
-          height: settingsDesignSize.height,
-          child: DragToMoveArea(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 14),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Text(appVersion, style: GoogleFonts.notoSans(textStyle: const TextStyle(color: CupertinoColors.systemGrey6, fontSize: 16))),
-                    const SizedBox(width: 8),
-                    PressableIcon(icon: CupertinoIcons.arrow_uturn_left_circle_fill, color: CupertinoColors.systemRed, size: 24, onPressed: _closeSettings),
-                    const SizedBox(width: 18),
-                  ],
-                ),
-                Expanded(
-                  child: PageView(
-                    controller: _pageController,
-                    physics: const NeverScrollableScrollPhysics(),
-                    onPageChanged: (int page) {
-                      setState(() { _currentPage = page; });
-                    },
+        child: FittedBox(
+          fit: BoxFit.fitWidth,
+          child: SizedBox(
+            width: settingsDesignSize.width,
+            height: settingsDesignSize.height,
+            child: DragToMoveArea(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 14),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      _buildPageOne(),
-                      _buildPageTwo(),
+                      Text(appVersion, style: GoogleFonts.notoSans(textStyle: const TextStyle(color: CupertinoColors.systemGrey6, fontSize: 16))),
+                      const SizedBox(width: 8),
+                      PressableIcon(icon: CupertinoIcons.arrow_uturn_left_circle_fill, color: CupertinoColors.systemRed, size: 24, onPressed: _closeSettings),
+                      const SizedBox(width: 18),
                     ],
                   ),
-                ),
-                _buildNavigationControls(),
-                const SizedBox(height: 4),
-              ],
+                  Expanded(
+                    child: PageView(
+                      controller: _pageController,
+                      physics: const NeverScrollableScrollPhysics(),
+                      onPageChanged: (int page) {
+                        setState(() { _currentPage = page; });
+                      },
+                      children: [
+                        _buildPageOne(),
+                        _buildPageTwo(),
+                        _buildPageThree(),
+                      ],
+                    ),
+                  ),
+                  _buildNavigationControls(),
+                  const SizedBox(height: 4),
+                ],
+              ),
             ),
           ),
         ),
       ),
-    ),
     );
   }
 
@@ -165,8 +170,12 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
         children: [
           Text("업데이트 주기", style: GoogleFonts.notoSans(textStyle: const TextStyle(color: CupertinoColors.systemGrey6, fontSize: 14))),
           CupertinoSegmentedControl<int>( padding: const EdgeInsets.all(2), unselectedColor: CupertinoColors.darkBackgroundGray, groupValue: _selectedOption0, children: {0: _buildSegment("1초"), 1: _buildSegment("5초"), 2: _buildSegment("15초"), 3: _buildSegment("30초"), 4: _buildSegment("1분")}, onValueChanged: (int value) { setState(() { _selectedOption0 = value; }); }),
-          const SizedBox(height: 2),
-          Text("타이머 자동 정지", style: GoogleFonts.notoSans(textStyle: const TextStyle(color: CupertinoColors.systemGrey6, fontSize: 14))),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Text("타이머 자동 정지", style: GoogleFonts.notoSans(textStyle: const TextStyle(color: CupertinoColors.systemGrey6, fontSize: 14))),
+            ],
+          ),
           const SizedBox(height: 2),
           CupertinoSegmentedControl<int>(padding: const EdgeInsets.all(2), unselectedColor: CupertinoColors.darkBackgroundGray, groupValue: _selectedOption1, children: {0: _buildSegment("안 함"), 1: _buildSegment("5분"), 2: _buildSegment("15분"), 3: _buildSegment("30분"), 4: _buildSegment("1시간")}, onValueChanged: (int value) { setState(() { _selectedOption1 = value; }); }),
         ],
@@ -181,10 +190,25 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text("평균 표시", style: GoogleFonts.notoSans(textStyle: const TextStyle(color: CupertinoColors.systemGrey6, fontSize: 14))),
+          Text("경험치 평균 표시", style: GoogleFonts.notoSans(textStyle: const TextStyle(color: CupertinoColors.systemGrey6, fontSize: 14))),
           const SizedBox(height: 4),
           CupertinoSegmentedControl<int>(padding: const EdgeInsets.all(2), unselectedColor: CupertinoColors.darkBackgroundGray, groupValue: _selectedOption2, children: {0: _buildSegment("안 함"), 1: _buildSegment("5분"), 2: _buildSegment("15분"), 3: _buildSegment("30분"), 4: _buildSegment("1시간")}, onValueChanged: (int value) { setState(() { _selectedOption2 = value; }); }),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
+          Text("메소 평균 표시", style: GoogleFonts.notoSans(textStyle: const TextStyle(color: CupertinoColors.systemGrey6, fontSize: 14))),
+          const SizedBox(height: 4),
+          CupertinoSegmentedControl<int>(padding: const EdgeInsets.all(2), unselectedColor: CupertinoColors.darkBackgroundGray, groupValue: _selectedOption3, children: {0: _buildSegment("안 함"), 1: _buildSegment("5분"), 2: _buildSegment("15분"), 3: _buildSegment("30분"), 4: _buildSegment("1시간")}, onValueChanged: (int value) { setState(() { _selectedOption3 = value; }); }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPageThree() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 48),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
           Row(
             children: [
               Text("N 시간 후 예상 시각 표시", style: GoogleFonts.notoSans(textStyle: const TextStyle(color: CupertinoColors.systemGrey6, fontSize: 14))),
@@ -210,7 +234,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WindowListener {
           return Container(
             width: 8.0,
             height: 8.0,
-            margin: const EdgeInsets.symmetric(vertical: 2, horizontal: 8),
+            margin: const EdgeInsets.symmetric(vertical: 2.0, horizontal: 8.0),
             decoration: BoxDecoration(shape: BoxShape.circle, color: _currentPage == index ? CupertinoColors.activeBlue : CupertinoColors.inactiveGray),
           );
         }),
@@ -259,6 +283,66 @@ class _PressableIconState extends State<PressableIcon> {
     );
   }
 }
+
+class CustomCupertinoSlider extends StatelessWidget {
+  final double value;
+  final ValueChanged<double> onChanged;
+  final double min;
+  final double max;
+  final int? divisions;
+  final double thumbRadius; // 원하는 thumb 크기를 반지름으로 지정
+  final String label;
+
+  const CustomCupertinoSlider({
+    Key? key,
+    required this.value,
+    required this.onChanged,
+    this.min = 0.0,
+    this.max = 1.0,
+    this.divisions,
+    this.thumbRadius = 10.0, // 기본 thumb 크기
+    this.label = "",
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    // Material Slider에 SliderTheme를 적용해 thumb 크기와 색상 등 스타일을 지정합니다.
+    return Row(
+      children: [
+        SizedBox(
+          width: 146, // 원하는 슬라이더 전체 너비
+          child: SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              trackHeight: 2.0,
+              trackShape: NoPaddingTrackShape(), // 커스텀 트랙 모양 적용
+              thumbShape:
+                  RoundSliderThumbShape(enabledThumbRadius: thumbRadius),
+              overlayShape:
+                  RoundSliderOverlayShape(overlayRadius: thumbRadius * 2),
+              activeTrackColor: CupertinoColors.systemBlue,
+              inactiveTrackColor: CupertinoColors.systemGrey,
+              thumbColor: CupertinoColors.systemBlue,
+              overlayColor: CupertinoColors.systemBlue.withOpacity(0.3),
+              tickMarkShape: const NoTickMarkShape(), // 틱마크를 숨김
+              showValueIndicator: label == ""
+                  ? ShowValueIndicator.never
+                  : ShowValueIndicator.always,
+            ),
+            child: Slider(
+              label: label,
+              value: value,
+              min: min,
+              max: max,
+              divisions: divisions,
+              onChanged: onChanged,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class NoPaddingTrackShape extends RoundedRectSliderTrackShape {
   @override Rect getPreferredRect({required RenderBox parentBox, Offset offset = Offset.zero, required SliderThemeData sliderTheme, bool isEnabled = false, bool isDiscrete = false}) {
     final double trackHeight = sliderTheme.trackHeight ?? 2.0; final double trackLeft = offset.dx; final double trackWidth = parentBox.size.width; final double trackTop = offset.dy + (parentBox.size.height - trackHeight) / 2; return Rect.fromLTWH(trackLeft, trackTop, trackWidth, trackHeight);

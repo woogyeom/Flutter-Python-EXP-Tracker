@@ -38,9 +38,11 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   bool isInitValueInserted = false;
   bool showMeso = false;
   bool showExpectedTime = false;
+  bool isUpdatingData = false;
 
   // UI 관련 시간 설정
-  Duration showAverage = Duration.zero;
+  Duration showExpAverage = Duration.zero;
+  Duration showMesoAverage = Duration.zero;
   Duration updateInterval = const Duration(seconds: 1);
   Duration timerEndTime = Duration.zero;
   Duration _elapsedTime = Duration.zero;
@@ -61,8 +63,8 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   int averageExp = 0;
   double averagePercentage = 0.0;
   int averageMeso = 0;
-  int expBeforeLevelUp = 0;
-  double percentageBeforeLevelUp = 0.0;
+  int totalExpFromCompletedLevels = 0;
+  double totalPercentageFromCompletedLevels = 0.0;
 
   int storedExp = 0;
   double storedPercentage = 0.0;
@@ -85,25 +87,50 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     scope: HotKeyScope.system,
   );
 
-  // ============================================================
-  // HELPER METHODS
-  // ============================================================
+  @override
+  void initState() {
+    super.initState();
+    safeLog("initState() 호출됨, 버전: $appVersion");
+    windowManager.addListener(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      safeLog("Post-frame callback 시작");
+      _initializeApp();
+    });
+    _registerHotKey();
+  }
+
+  @override
+  void dispose() {
+    safeLog('dispose');
+    windowManager.removeListener(this);
+    _timer?.cancel();
+    hotKeyManager.unregisterAll();
+    super.dispose();
+  }
+
+  @override
+  void onWindowClose() async {
+    safeLog("Closing app...");
+    await _saveConfig();
+    await widget.serverManager.shutdownServer();
+    windowManager.destroy();
+  }
+
   void _safeSetState(VoidCallback fn) {
     if (mounted) setState(fn);
   }
 
-  /// _calculateAverage: 평균값(경험치, 퍼센티지, 메소)을 계산합니다.
   void _calculateAverage() {
-    if (showAverage == Duration.zero || _elapsedTime.inSeconds <= 0) return;
-    averageExp =
-        ((totalExp / _elapsedTime.inSeconds) * showAverage.inSeconds).floor();
-    averagePercentage =
-        (totalPercentage / _elapsedTime.inSeconds) * showAverage.inSeconds;
-    averageMeso =
-        ((totalMeso / _elapsedTime.inSeconds) * showAverage.inSeconds).floor();
+    if (_elapsedTime.inSeconds <= 0) return;
+    if (showExpAverage != Duration.zero) {
+      averageExp = ((totalExp / _elapsedTime.inSeconds) * showExpAverage.inSeconds).floor();
+      averagePercentage = (totalPercentage / _elapsedTime.inSeconds) * showExpAverage.inSeconds;
+    }
+    if (showMeso && showMesoAverage != Duration.zero) {
+      averageMeso = ((totalMeso / _elapsedTime.inSeconds) * showMesoAverage.inSeconds).floor();
+    }
   }
 
-  /// _formatDuration: Duration을 HH:MM:SS 형식의 문자열로 변환합니다.
   String _formatDuration(Duration duration) {
     String twoDigits(int n) => n.toString().padLeft(2, "0");
     String hours = twoDigits(duration.inHours.remainder(60));
@@ -112,14 +139,10 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     return "$hours:$minutes:$seconds";
   }
 
-  // ============================================================
-  // CONFIG 관련 메소드
-  // ============================================================
   Future<File> _getConfigFile() async {
     const String configPath = "config/config.json";
     final Directory currentDir = Directory.current;
     final File configFile = File('${currentDir.path}/$configPath');
-
     if (!await configFile.parent.exists()) {
       await configFile.parent.create(recursive: true);
     }
@@ -133,37 +156,24 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     final file = await _getConfigFile();
     final Offset position = await windowManager.getPosition();
     final Size size = await windowManager.getSize();
+
     Map<String, dynamic> config = {
-      "position": {
-        "x": position.dx,
-        "y": position.dy,
-      },
+      "position": {"x": position.dx, "y": position.dy},
+      "size": {"width": size.width, "height": size.height},
       "size": {
         "width": size.width,
         "height": size.height,
       },
-      "levelRect": levelRect != null
-          ? {
-              "left": levelRect!.left,
-              "top": levelRect!.top,
-              "right": levelRect!.right,
-              "bottom": levelRect!.bottom,
-            }
-          : null,
-      "expRect": expRect != null
-          ? {
-              "left": expRect!.left,
-              "top": expRect!.top,
-              "right": expRect!.right,
-              "bottom": expRect!.bottom,
-            }
-          : null,
+      "levelRect": levelRect != null ? {"left": levelRect!.left, "top": levelRect!.top, "right": levelRect!.right, "bottom": levelRect!.bottom} : null,
+      "expRect": expRect != null ? {"left": expRect!.left, "top": expRect!.top, "right": expRect!.right, "bottom": expRect!.bottom} : null,
+      "mesoRect": mesoRect != null ? {"left": mesoRect!.left, "top": mesoRect!.top, "right": mesoRect!.right, "bottom": mesoRect!.bottom} : null,
       "updateInterval": updateInterval.inSeconds,
       "timerEndTime": timerEndTime.inSeconds,
-      "showAverage": showAverage.inSeconds,
+      "showExpAverage": showExpAverage.inSeconds,
+      "showMesoAverage": showMesoAverage.inSeconds,
+      "showMeso": showMeso,
       "showExpectedTime": showExpectedTime,
     };
-
     try {
       await file.writeAsString(jsonEncode(config));
     } catch (e) {
@@ -175,28 +185,19 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     try {
       final file = await _getConfigFile();
       String content = await file.readAsString();
-      safeLog("Config 파일 내용: $content");
-      Map<String, dynamic> config;
-      try {
-        config = jsonDecode(content);
-      } catch (e) {
-        safeLog("Invalid config format. Recreating config file.");
-        await file.writeAsString("{}");
-        config = {};
-      }
-      if (config.isEmpty) {
-        safeLog("Empty config, skipping further config load.");
+      if (content.isEmpty) {
+        safeLog("Empty config, skipping config load.");
         return;
       }
+      Map<String, dynamic> config = jsonDecode(content);
 
       if (config["position"] != null && config["position"] is Map) {
         final pos = config["position"] as Map<String, dynamic>;
-        final newPos = Offset(
-          (pos["x"] ?? 0).toDouble(),
-          (pos["y"] ?? 0).toDouble(),
-        );
-        safeLog("Setting window position to: $newPos");
-        await windowManager.setPosition(newPos);
+        await windowManager.setPosition(Offset((pos["x"] ?? 0).toDouble(), (pos["y"] ?? 0).toDouble()));
+      }
+      if (config["size"] != null && config["size"] is Map) {
+        final size = config["size"] as Map<String, dynamic>;
+        await windowManager.setSize(Size((size["width"] ?? appSize.width).toDouble(), (size["height"] ?? appSize.height).toDouble()));
       }
       if (config["size"] != null && config["size"] is Map) {
         final size = config["size"] as Map<String, dynamic>;
@@ -208,39 +209,31 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
         await windowManager.setSize(newSize);
       }
       _safeSetState(() {
-        if (config["levelRect"] != null && config["levelRect"] is Map) {
-          final rect = config["levelRect"] as Map<String, dynamic>;
-          levelRect = Rect.fromLTRB(
-            (rect["left"] ?? 0).toDouble(),
-            (rect["top"] ?? 0).toDouble(),
-            (rect["right"] ?? 0).toDouble(),
-            (rect["bottom"] ?? 0).toDouble(),
-          );
+        if (config["levelRect"] != null) {
+          final rect = config["levelRect"];
+          levelRect = Rect.fromLTRB(rect["left"], rect["top"], rect["right"], rect["bottom"]);
         }
-        if (config["expRect"] != null && config["expRect"] is Map) {
-          final rect = config["expRect"] as Map<String, dynamic>;
-          expRect = Rect.fromLTRB(
-            (rect["left"] ?? 0).toDouble(),
-            (rect["top"] ?? 0).toDouble(),
-            (rect["right"] ?? 0).toDouble(),
-            (rect["bottom"] ?? 0).toDouble(),
-          );
+        if (config["expRect"] != null) {
+          final rect = config["expRect"];
+          expRect = Rect.fromLTRB(rect["left"], rect["top"], rect["right"], rect["bottom"]);
+        }
+        if (config["mesoRect"] != null) {
+          final rect = config["mesoRect"];
+          mesoRect = Rect.fromLTRB(rect["left"], rect["top"], rect["right"], rect["bottom"]);
         }
         updateInterval = Duration(seconds: config["updateInterval"] ?? 1);
         timerEndTime = Duration(seconds: config["timerEndTime"] ?? 0);
-        showAverage = Duration(seconds: config["showAverage"] ?? 0);
+        showExpAverage = Duration(seconds: config["showExpAverage"] ?? 0);
+        showMesoAverage = Duration(seconds: config["showMesoAverage"] ?? 0);
+        showMeso = config["showMeso"] ?? false;
         showExpectedTime = config["showExpectedTime"] ?? false;
       });
       safeLog("Config loaded: $config");
     } catch (e) {
       await safeLog("Error loading config: $e");
-      exit(1);
     }
   }
 
-  // ============================================================
-  // 서버 통신 및 초기화 관련 메소드
-  // ============================================================
   Future<void> _initializeApp() async {
     try {
       await _expDataLoader.loadExpData();
@@ -285,8 +278,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
 
   Future<bool> checkServerReady() async {
     try {
-      final response =
-          await http.get(Uri.parse("http://127.0.0.1:5000/health"));
+      final response = await http.get(Uri.parse("http://127.0.0.1:5000/health"));
       return response.statusCode == 200;
     } catch (e) {
       return false;
@@ -309,8 +301,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
         safeLog("서버 준비 대기 중... ($elapsed 초 경과)");
         await Future.delayed(const Duration(milliseconds: 500));
       } catch (e, stack) {
-        await safeLog(
-            "예외 발생 during waitForServerReady: $e\nStackTrace: $stack");
+        await safeLog("예외 발생 during waitForServerReady: $e\nStackTrace: $stack");
         exit(1);
       }
     }
@@ -323,31 +314,14 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     }
     final url = Uri.parse("http://127.0.0.1:5000/set_roi");
     Map<String, dynamic> roiData = {
-      "level": [
-        levelRect!.left,
-        levelRect!.top,
-        levelRect!.right,
-        levelRect!.bottom,
-      ],
-      "exp": [
-        expRect!.left,
-        expRect!.top,
-        expRect!.right,
-        expRect!.bottom,
-      ],
+      "level": [levelRect!.left, levelRect!.top, levelRect!.right, levelRect!.bottom],
+      "exp": [expRect!.left, expRect!.top, expRect!.right, expRect!.bottom],
     };
     if (mesoRect != null) {
-      roiData["meso"] = [
-        mesoRect!.left,
-        mesoRect!.top,
-        mesoRect!.right,
-        mesoRect!.bottom,
-      ];
+      roiData["meso"] = [mesoRect!.left, mesoRect!.top, mesoRect!.right, mesoRect!.bottom];
     }
     try {
-      final response = await http.post(url,
-          headers: {"Content-Type": "application/json"},
-          body: jsonEncode(roiData));
+      final response = await http.post(url, headers: {"Content-Type": "application/json"}, body: jsonEncode(roiData));
       if (response.statusCode == 200) {
         _safeSetState(() {
           isRoiSet = true;
@@ -361,90 +335,114 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     }
   }
 
-  // ============================================================
-  // 데이터 업데이트: 서버에서 fetch한 데이터를 기반으로 일반 수치와 평균값을 동시에 업데이트
-  // ============================================================
   Future<void> _updateData({required bool fetchData}) async {
-    if (fetchData) {
-      try {
-        // EXP 데이터 fetch
-        final expResponse = await http
-            .get(Uri.parse('http://127.0.0.1:5000/extract_exp_and_level'));
-        if (expResponse.statusCode != 200) {
-          throw Exception("Failed to fetch EXP data");
-        }
-        final expData = json.decode(expResponse.body);
-        int exp = expData['exp'];
-        double percentage = expData['percentage'];
-        int level = expData['level'];
-
-        // Meso 데이터 fetch (선택적)
-        Map<String, dynamic>? mesoData;
-        if (showMeso) {
-          final mesoResponse =
-              await http.get(Uri.parse('http://127.0.0.1:5000/extract_meso'));
-          if (mesoResponse.statusCode == 200) {
-            mesoData = json.decode(mesoResponse.body);
-          } else {
-            throw Exception("Failed to fetch Meso data");
+    if (isUpdatingData) {
+      return;
+    }
+    isUpdatingData = true;
+    try {
+      if (fetchData) {
+        try {
+          final expResponse = await http.get(Uri.parse('http://127.0.0.1:5000/extract_exp_and_level'));
+          if (expResponse.statusCode != 200) {
+            throw Exception("Failed to fetch EXP data");
           }
-        }
+          final expData = json.decode(expResponse.body);
+          int exp = expData['exp'];
+          double percentage = expData['percentage'];
+          int level = expData['level'];
+          Map<String, dynamic>? mesoData;
+          if (showMeso) {
+            final mesoResponse = await http.get(Uri.parse('http://127.0.0.1:5000/extract_meso'));
+            if (mesoResponse.statusCode == 200) {
+              mesoData = json.decode(mesoResponse.body);
+            } else {
+              throw Exception("Failed to fetch Meso data");
+            }
+          }
+          _safeSetState(() {
+            // --- A. 최초 실행 시 변수 초기화 ---
+            if (initialLevel == 0) {
+              initialLevel = level;
+              initialExp = exp;
+              initialPercentage = percentage;
+              lastLevel = level;
+              lastExp = exp;
+              lastPercentage = percentage;
+              isInitValueInserted = true;
+            }
+            // --- B. 게임 데이터 업데이트 ---
+            else {
+              // --- B-1. 레벨업 했을 때의 모든 처리 (계산 및 디버깅) ---
+              if (level > lastLevel) {
+                safeLog("레벨업!");
+                int maxExpForLastLevel = _expDataLoader.getExpForLevel(lastLevel);
 
-        _safeSetState(() {
-          // EXP 데이터 업데이트
-          if (initialLevel == 0) {
-            initialLevel = level;
-            initialExp = exp;
-            initialPercentage = percentage;
-            isInitValueInserted = true;
-          } else {
-            // 레벨 업
-            if (level > lastLevel &&
-                ((level - lastLevel) == 1 || (level - lastLevel) == 2)) {
-              int levelUpExp = _expDataLoader.getExpForLevel(lastLevel);
-              expBeforeLevelUp = levelUpExp - lastExp + totalExp;
-              percentageBeforeLevelUp = 100 - lastPercentage + totalPercentage;
-              initialExp = 0;
-              initialPercentage = 0.0;
+                // --- (1) 레벨업 직전(이전 틱) 상태 출력 ---
+                debugPrint("================= LEVEL UP: BEFORE CALCULATION ==================");
+                debugPrint(" [PREVIOUS TICK STATE]");
+                debugPrint("   - Level: $lastLevel");
+                debugPrint("   - EXP: $lastExp / $maxExpForLastLevel");
+                debugPrint("   - totalExp (Before this level-up): $totalExp");
+                debugPrint("   - initialExp (Start EXP for this level): $initialExp");
+                debugPrint("   - totalExpFromCompletedLevels (Old): $totalExpFromCompletedLevels");
+                debugPrint("--------------------------------------------------");
+
+                // --- (2) 레벨업 계산 수행 ---
+                int expGainedThisLevel = maxExpForLastLevel - initialExp;
+                totalExpFromCompletedLevels += expGainedThisLevel;
+                initialExp = 0; // 새 레벨의 출발선은 0
+
+                double percentageGainedThisLevel = 100.0 - initialPercentage;
+                totalPercentageFromCompletedLevels += percentageGainedThisLevel;
+                initialPercentage = 0.0;
+                
+                // --- (3) 레벨업 직후(현재 틱) 상태 및 최종 계산 결과 출력 ---
+                //      (최종 totalExp는 이 블록 바로 바깥에서 계산되므로, 그 전에 주요 값들을 출력)
+                debugPrint(" [CURRENT TICK STATE & CALCULATION RESULT]");
+                debugPrint("   - New Level (Current): $level");
+                debugPrint("   - New EXP (Current): $exp");
+                debugPrint("   - Exp Gained This Level (Calculated): $expGainedThisLevel");
+                debugPrint("   - totalExpFromCompletedLevels (Updated): $totalExpFromCompletedLevels");
+                debugPrint("============================================================");
+              }
+
+              // --- B-2. 최종 누적 경험치 계산 (매 틱 실행) ---
+              totalExp = (exp - initialExp) + totalExpFromCompletedLevels + storedExp;
+              totalPercentage = (percentage - initialPercentage) + totalPercentageFromCompletedLevels + storedPercentage;
+
+              // --- B-3. 다음 계산을 위해 현재 값을 '마지막 값'으로 저장 ---
+              lastExp = exp;
+              lastPercentage = percentage;
               lastLevel = level;
             }
-            totalExp = exp - initialExp + expBeforeLevelUp + storedExp;
-            totalPercentage = percentage -
-                initialPercentage +
-                percentageBeforeLevelUp +
-                storedPercentage;
-            lastExp = exp;
-            lastPercentage = percentage;
-            lastLevel = level;
-          }
-          // Meso 데이터 업데이트
-          if (mesoData != null) {
-            int meso = mesoData['meso'];
-            if (initialMeso == 0) {
-              initialMeso = meso;
-            } else {
-              totalMeso = meso - initialMeso + storedMeso;
+
+            // --- C. 메소 및 평균값 계산 (공통) ---
+            if (mesoData != null) {
+              int meso = mesoData['meso'];
+              if (initialMeso == 0) {
+                initialMeso = meso;
+              } else {
+                totalMeso = meso - initialMeso + storedMeso;
+              }
             }
-          }
-          // 동시에 평균 계산 및 타이머 텍스트 업데이트
+            _calculateAverage();
+            timerText = _formatDuration(_elapsedTime);
+          });
+        } catch (e) {
+          safeLog("[Server] Error updating data: $e");
+        }
+      } else {
+        _safeSetState(() {
           _calculateAverage();
           timerText = _formatDuration(_elapsedTime);
         });
-      } catch (e) {
-        safeLog("[Server] Error updating data: $e");
       }
-    } else {
-      // fetchData가 false이면, 단순히 평균과 타이머 텍스트만 업데이트 (설정 화면 등)
-      _safeSetState(() {
-        _calculateAverage();
-        timerText = _formatDuration(_elapsedTime);
-      });
+    } finally {
+      isUpdatingData = false;
     }
   }
 
-  // ============================================================
-  // 타이머 관련 메소드
-  // ============================================================
   Future<void> _startTimer() async {
     _safeSetState(() {
       isRunning = true;
@@ -452,16 +450,12 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
       _expectedEndTime = DateTime.now().add(
           Duration(hours: _nextHourCount, seconds: -_elapsedTime.inSeconds));
     });
-
-    // 초기 데이터 fetch 및 UI 업데이트
     await _updateData(fetchData: true);
-
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) async {
       _safeSetState(() {
         _elapsedTime += const Duration(seconds: 1);
         timerText = _formatDuration(_elapsedTime);
       });
-      // updateInterval마다 서버 데이터를 fetch하여 업데이트
       if (_elapsedTime.inSeconds % updateInterval.inSeconds == 0) {
         await _updateData(fetchData: true);
       }
@@ -472,7 +466,6 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   }
 
   Future<void> _stopTimer() async {
-    // 타이머 종료 전 최신 데이터 fetch 및 업데이트
     await _updateData(fetchData: true);
     _safeSetState(() {
       isRunning = false;
@@ -491,38 +484,29 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     _safeSetState(() {
       isRunning = false;
       _elapsedTime = Duration.zero;
-
       initialExp = 0;
       initialPercentage = 0;
       initialLevel = 0;
       initialMeso = 0;
-
       lastExp = 0;
       lastPercentage = 0;
-
+      lastLevel = 0; // lastLevel도 리셋
       totalExp = 0;
       totalPercentage = 0;
       totalMeso = 0;
-
       averageExp = 0;
       averagePercentage = 0;
       averageMeso = 0;
-
-      expBeforeLevelUp = 0;
-      percentageBeforeLevelUp = 0;
-
+      totalExpFromCompletedLevels = 0;
+      totalPercentageFromCompletedLevels = 0;
       storedExp = 0;
       storedPercentage = 0;
       storedMeso = 0;
-
       timerText = _formatDuration(_elapsedTime);
     });
     _timer?.cancel();
   }
 
-  // ============================================================
-  // 네비게이션 및 기타 UI 이벤트
-  // ============================================================
   void _openSettingsScreen() async {
     final result = await Navigator.push(
       context,
@@ -531,7 +515,8 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
           isRunning: isRunning,
           updateInterval: updateInterval,
           timerEndTime: timerEndTime,
-          showAverage: showAverage,
+          showExpAverage: showExpAverage,
+          showMesoAverage: showMesoAverage,
           showMeso: showMeso,
           showExpectedTime: showExpectedTime,
         ),
@@ -543,11 +528,11 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
       _safeSetState(() {
         updateInterval = result['updateInterval'];
         timerEndTime = result['timerEndTime'];
-        showAverage = result['showAverage'];
+        showExpAverage = result['showExpAverage'];
+        showMesoAverage = result['showMesoAverage'];
         showMeso = result['showMeso'];
         showExpectedTime = result['showExpectedTime'];
       });
-      // 설정 화면에서 돌아올 때는 fetch 없이 평균/타이머만 업데이트
       await _updateData(fetchData: false);
       _saveConfig();
     }
@@ -557,8 +542,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     final result = await Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            RectSelectScreen(),
+        pageBuilder: (context, animation, secondaryAnimation) => RectSelectScreen(),
         transitionDuration: Duration.zero,
         reverseTransitionDuration: Duration.zero,
       ),
@@ -567,8 +551,6 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
       _safeSetState(() {
         levelRect = result['level'];
         expRect = result['exp'];
-      });
-      _safeSetState(() {
         isRoiSet = true;
       });
       _saveConfig();
@@ -580,8 +562,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     final result = await Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            RectSelectScreen(isMeso: true),
+        pageBuilder: (context, animation, secondaryAnimation) => RectSelectScreen(isMeso: true),
         transitionDuration: Duration.zero,
         reverseTransitionDuration: Duration.zero,
       ),
@@ -596,44 +577,12 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   }
 
   void _launchURL() async {
-    final Uri url =
-        Uri.parse("https://github.com/woogyeom/Flutter-Python-EXP-Tracker");
+    final Uri url = Uri.parse("https://github.com/woogyeom/Flutter-Python-EXP-Tracker");
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     } else {
       throw "Could not launch $url";
     }
-  }
-
-  // ============================================================
-  // Lifecycle & Window 이벤트
-  // ============================================================
-  @override
-  void initState() {
-    super.initState();
-    safeLog("initState() 호출됨, 버전: $appVersion");
-    windowManager.addListener(this);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      safeLog("Post-frame callback 시작");
-      _initializeApp();
-    });
-    _registerHotKey();
-  }
-
-  @override
-  void dispose() {
-    safeLog('dispose');
-    windowManager.removeListener(this);
-    _timer?.cancel();
-    hotKeyManager.unregisterAll();
-    super.dispose();
-  }
-
-  @override
-  void onWindowClose() async {
-    safeLog("Closing app...");
-    await widget.serverManager.shutdownServer();
-    windowManager.close();
   }
 
   void _registerHotKey() async {
@@ -652,7 +601,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     );
   }
 
-  @override
+@override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
       backgroundColor: isRunning
@@ -667,269 +616,269 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
             height: appSize.height,
             child: Column(
               children: [
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                const SizedBox(width: 8),
-                CupertinoButton(
-                  padding: EdgeInsets.zero,
-                  onPressed: _launchURL,
-                  child: const Icon(
-                    CupertinoIcons.info,
-                    color: CupertinoColors.systemGrey6,
-                    size: 24,
-                  ),
-                ),
-                SizedBox(
-                  width: 148,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Transform.scale(
-                        scale: 0.8,
-                        child: CupertinoSwitch(
-                          value: showMeso,
-                          onChanged: (bool value) async {
-                            _safeSetState(() {
-                              showMeso = value;
-                            });
-                            _saveConfig();
-                            if (value) {
-                              await _openMesoRectSelectScreen();
-                            }
-                          },
-                          inactiveThumbColor: CupertinoColors.inactiveGray,
-                          inactiveTrackColor: CupertinoColors.inactiveGray,
-                          activeTrackColor: CupertinoColors.activeBlue,
-                          thumbColor: CupertinoColors.activeBlue,
-                          activeThumbImage: const AssetImage('assets/meso.png'),
-                          inactiveThumbImage:
-                              const AssetImage('assets/meso.png'),
-                        ),
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    const SizedBox(width: 8),
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      onPressed: _launchURL,
+                      child: const Icon(
+                        CupertinoIcons.info,
+                        color: CupertinoColors.systemGrey6,
+                        size: 24,
                       ),
-                    ],
-                  ),
-                ),
-                CupertinoButton(
-                  padding: EdgeInsets.zero,
-                  onPressed: () async {
-                    _resetTimer();
-                  },
-                  child: const Icon(
-                    CupertinoIcons.restart,
-                    color: CupertinoColors.systemGrey6,
-                    size: 24,
-                  ),
-                ),
-                CupertinoButton(
-                  padding: EdgeInsets.zero,
-                  onPressed: () async {
-                    await _openRectSelectScreen();
-                  },
-                  child: const Icon(
-                    CupertinoIcons.crop,
-                    color: CupertinoColors.systemGrey6,
-                    size: 24,
-                  ),
-                ),
-                CupertinoButton(
-                  padding: EdgeInsets.zero,
-                  onPressed: _openSettingsScreen,
-                  child: const Icon(
-                    CupertinoIcons.gear_solid,
-                    color: CupertinoColors.systemGrey6,
-                    size: 24,
-                  ),
-                ),
-                CupertinoButton(
-                  padding: EdgeInsets.zero,
-                  onPressed: () async {
-                    await _saveConfig();
-                    await widget.serverManager.shutdownServer();
-                    windowManager.close();
-                  },
-                  child: const Icon(
-                    CupertinoIcons.xmark_circle_fill,
-                    color: CupertinoColors.systemRed,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 8),
-              ],
-            ),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  Container(
-                    alignment: Alignment.center,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        SizedBox(
-                          width: 80,
-                          child: CupertinoButton(
-                            padding: EdgeInsets.zero,
-                            onPressed: isInitializing
-                                ? null
-                                : () {
-                                    if (!isRoiSet) {
-                                      _openRectSelectScreen();
-                                      return;
-                                    }
-                                    if (!isRunning &&
-                                        _elapsedTime == Duration.zero) {
-                                      _startTimer();
-                                    } else if (isRunning) {
-                                      _stopTimer();
-                                    } else {
-                                      _startTimer();
-                                    }
-                                  },
-                            color: isInitializing
-                                ? CupertinoColors.systemGrey
-                                : !isRoiSet
-                                    ? CupertinoColors.systemGrey
-                                    : isRunning
-                                        ? CupertinoColors.systemRed
-                                        : (_elapsedTime == Duration.zero)
-                                            ? CupertinoColors.systemGreen
-                                            : CupertinoColors.systemYellow,
-                            borderRadius: BorderRadius.circular(12),
-                            child: isInitializing
-                                ? const CupertinoActivityIndicator(
-                                    color: CupertinoColors.white)
-                                : Icon(
-                                    !isRoiSet
-                                        ? CupertinoIcons.crop
-                                        : isRunning
-                                            ? CupertinoIcons.pause_fill
-                                            : CupertinoIcons.play_arrow_solid,
-                                    color: CupertinoColors.white,
-                                    size: 32,
-                                  ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Text(
-                          timerText,
-                          style: GoogleFonts.notoSans(
-                            textStyle: TextStyle(
-                              color: CupertinoColors.white,
-                              fontSize: showExpectedTime ? 44 : 48,
-                              height: 1.2,
-                            ),
-                          ),
-                        ),
-                      ],
                     ),
-                  ),
-                  if (showExpectedTime)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          "$_nextHourCount시간 뒤: ${_expectedEndTime != null ? DateFormat('HH:mm:ss').format(_expectedEndTime!) : "XX:XX:XX"}",
-                          style: const TextStyle(
-                            color: CupertinoColors.systemGrey6,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  // 경험치 UI
-                  Flexible(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.center,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
+                    SizedBox(
+                      width: 164,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          Text(
-                            !isInitValueInserted
-                                ? 'XX [X.XX%]'
-                                : '${numberFormat.format(totalExp)} [${totalPercentage.toStringAsFixed(2)}%]',
-                            style: GoogleFonts.notoSans(
-                              textStyle: const TextStyle(
-                                height: 1.2,
-                                color: CupertinoColors.systemYellow,
-                                fontWeight: FontWeight.w400,
-                                fontSize: 36,
-                              ),
+                          Transform.scale(
+                            scale: 0.8,
+                            child: CupertinoSwitch(
+                              value: showMeso,
+                              onChanged: (bool value) async {
+                                _safeSetState(() {
+                                  showMeso = value;
+                                });
+                                _saveConfig();
+                                if (value) {
+                                  await _openMesoRectSelectScreen();
+                                }
+                              },
+                              inactiveThumbColor: CupertinoColors.inactiveGray,
+                              inactiveTrackColor: CupertinoColors.inactiveGray,
+                              activeTrackColor: CupertinoColors.activeBlue,
+                              thumbColor: CupertinoColors.activeBlue,
+                              activeThumbImage: const AssetImage('assets/meso.png'),
+                              inactiveThumbImage:
+                                  const AssetImage('assets/meso.png'),
                             ),
                           ),
-                          const SizedBox(height: 2),
-                          if (showAverage != Duration.zero)
-                            Text(
-                              !isInitValueInserted
-                                  ? 'XX [X.XX%] / ${showAverage.inMinutes}분'
-                                  : '${numberFormat.format(averageExp)} [${averagePercentage.toStringAsFixed(2)}%] / ${showAverage.inMinutes}분',
-                              style: GoogleFonts.notoSans(
-                                textStyle: const TextStyle(
-                                  height: 1.2,
-                                  color: CupertinoColors.systemYellow,
-                                  fontWeight: FontWeight.w400,
-                                  fontSize: 18,
-                                ),
-                              ),
-                            ),
                         ],
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  // 메소 UI
-                  if (showMeso)
-                    Flexible(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      onPressed: () async {
+                        _resetTimer();
+                      },
+                      child: const Icon(
+                        CupertinoIcons.restart,
+                        color: CupertinoColors.systemGrey6,
+                        size: 24,
+                      ),
+                    ),
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      onPressed: () async {
+                        await _openRectSelectScreen();
+                      },
+                      child: const Icon(
+                        CupertinoIcons.crop,
+                        color: CupertinoColors.systemGrey6,
+                        size: 24,
+                      ),
+                    ),
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      onPressed: _openSettingsScreen,
+                      child: const Icon(
+                        CupertinoIcons.gear_solid,
+                        color: CupertinoColors.systemGrey6,
+                        size: 24,
+                      ),
+                    ),
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      onPressed: () async {
+                        await _saveConfig();
+                        await widget.serverManager.shutdownServer();
+                        windowManager.close();
+                      },
+                      child: const Icon(
+                        CupertinoIcons.xmark_circle_fill,
+                        color: CupertinoColors.systemRed,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                ),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      Container(
                         alignment: Alignment.center,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
+                            SizedBox(
+                              width: 80,
+                              child: CupertinoButton(
+                                padding: EdgeInsets.zero,
+                                onPressed: isInitializing
+                                    ? null
+                                    : () {
+                                        if (!isRoiSet) {
+                                          _openRectSelectScreen();
+                                          return;
+                                        }
+                                        if (!isRunning &&
+                                            _elapsedTime == Duration.zero) {
+                                          _startTimer();
+                                        } else if (isRunning) {
+                                          _stopTimer();
+                                        } else {
+                                          _startTimer();
+                                        }
+                                      },
+                                color: isInitializing
+                                    ? CupertinoColors.systemGrey
+                                    : !isRoiSet
+                                        ? CupertinoColors.systemGrey
+                                        : isRunning
+                                            ? CupertinoColors.systemRed
+                                            : (_elapsedTime == Duration.zero)
+                                                ? CupertinoColors.systemGreen
+                                                : CupertinoColors.systemYellow,
+                                borderRadius: BorderRadius.circular(12),
+                                child: isInitializing
+                                    ? const CupertinoActivityIndicator(
+                                        color: CupertinoColors.white)
+                                    : Icon(
+                                        !isRoiSet
+                                            ? CupertinoIcons.crop
+                                            : isRunning
+                                                ? CupertinoIcons.pause_fill
+                                                : CupertinoIcons.play_arrow_solid,
+                                        color: CupertinoColors.white,
+                                        size: 32,
+                                      ),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
                             Text(
-                              !isInitValueInserted
-                                  ? 'XXXX 메소'
-                                  : '${numberFormat.format(totalMeso)} 메소',
+                              timerText,
                               style: GoogleFonts.notoSans(
-                                textStyle: const TextStyle(
+                                textStyle: TextStyle(
+                                  color: CupertinoColors.white,
+                                  fontSize: showExpectedTime ? 44 : 48,
                                   height: 1.2,
-                                  color: CupertinoColors.systemYellow,
-                                  fontWeight: FontWeight.w400,
-                                  fontSize: 36,
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 2),
-                            if (showMeso && showAverage != Duration.zero)
+                          ],
+                        ),
+                      ),
+                      if (showExpectedTime)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              "$_nextHourCount시간 뒤: ${_expectedEndTime != null ? DateFormat('HH:mm:ss').format(_expectedEndTime!) : "XX:XX:XX"}",
+                              style: const TextStyle(
+                                color: CupertinoColors.systemGrey6,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      // 경험치 UI
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.center,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
                               Text(
                                 !isInitValueInserted
-                                    ? 'XXXX 메소 / ${showAverage.inMinutes}분'
-                                    : '${numberFormat.format(averageMeso)} 메소 / ${showAverage.inMinutes}분',
+                                    ? 'XX [X.XX%]'
+                                    : '${numberFormat.format(totalExp)} [${totalPercentage.toStringAsFixed(2)}%]',
                                 style: GoogleFonts.notoSans(
                                   textStyle: const TextStyle(
                                     height: 1.2,
                                     color: CupertinoColors.systemYellow,
                                     fontWeight: FontWeight.w400,
-                                    fontSize: 18,
+                                    fontSize: 36,
                                   ),
                                 ),
                               ),
-                          ],
+                              const SizedBox(height: 2),
+                              if (showExpAverage != Duration.zero)
+                                Text(
+                                  !isInitValueInserted
+                                      ? 'XX [X.XX%] / ${showExpAverage.inMinutes}분'
+                                      : '${numberFormat.format(averageExp)} [${averagePercentage.toStringAsFixed(2)}%] / ${showExpAverage.inMinutes}분',
+                                  style: GoogleFonts.notoSans(
+                                    textStyle: const TextStyle(
+                                      height: 1.2,
+                                      color: CupertinoColors.systemYellow,
+                                      fontWeight: FontWeight.w400,
+                                      fontSize: 18,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  const SizedBox(height: 14),
-                ],
-              ),
+                      const SizedBox(height: 4),
+                      // 메소 UI
+                      if (showMeso)
+                        Flexible(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.center,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  !isInitValueInserted
+                                      ? 'XXXX 메소'
+                                      : '${numberFormat.format(totalMeso)} 메소',
+                                  style: GoogleFonts.notoSans(
+                                    textStyle: const TextStyle(
+                                      height: 1.2,
+                                      color: CupertinoColors.systemYellow,
+                                      fontWeight: FontWeight.w400,
+                                      fontSize: 36,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                if (showMeso && showMesoAverage != Duration.zero)
+                                  Text(
+                                    !isInitValueInserted
+                                        ? 'XXXX 메소 / ${showMesoAverage.inMinutes}분'
+                                        : '${numberFormat.format(averageMeso)} 메소 / ${showMesoAverage.inMinutes}분',
+                                    style: GoogleFonts.notoSans(
+                                      textStyle: const TextStyle(
+                                        height: 1.2,
+                                        color: CupertinoColors.systemYellow,
+                                        fontWeight: FontWeight.w400,
+                                        fontSize: 18,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      const SizedBox(height: 14),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
           )
         )
       ),
       ),
     );
-  }
+  } 
 }

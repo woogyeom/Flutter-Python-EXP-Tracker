@@ -8,7 +8,7 @@ import 'package:flutter_exp_timer/server_manager.dart'; // 서버 매니저 불�
 import 'package:flutter_exp_timer/log.dart'; // safeLog를 사용하기 위함
 import 'package:hotkey_manager/hotkey_manager.dart';
 
-const String appVersion = "1.8.0 no-audio";
+const String appVersion = "1.8.1 no-audio";
 const Size appSize = Size(400, 200);
 
 void main() {
@@ -36,11 +36,8 @@ void main() {
       titleBarStyle: TitleBarStyle.hidden,
     );
 
+    // await windowManager.setResizable(false);
     await windowManager.setAspectRatio(2);
-    //await windowManager.setMaximumSize(appSize);
-    //await windowManager.setMinimumSize(const Size(200, 100));
-
-    await windowManager.setResizable(true);
     await windowManager.setAlwaysOnTop(true);
     await windowManager.setMaximizable(false);
     await windowManager.setOpacity(1.0);
@@ -53,7 +50,6 @@ void main() {
       runApp(MyApp(serverManager: serverManager));
     });
   }, (error, stackTrace) {
-    // 이곳에서 전역 예외 처리
     safeLog("Unhandled error: $error\nStack: $stackTrace");
   });
 }
@@ -66,7 +62,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CupertinoApp(
-      // debugShowCheckedModeBanner: false,
+      debugShowCheckedModeBanner: false,
       theme: const CupertinoThemeData(
         brightness: Brightness.light,
       ),
