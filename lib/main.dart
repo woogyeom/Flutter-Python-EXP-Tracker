@@ -8,7 +8,7 @@ import 'package:flutter_exp_timer/server_manager.dart'; // 서버 매니저 불�
 import 'package:flutter_exp_timer/log.dart'; // safeLog를 사용하기 위함
 import 'package:hotkey_manager/hotkey_manager.dart';
 
-const String appVersion = "1.8.1 no-audio";
+const String appVersion = "1.8.2 no-audio";
 const Size appSize = Size(400, 200);
 
 void main() {
